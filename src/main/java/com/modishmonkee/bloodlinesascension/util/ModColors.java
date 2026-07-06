@@ -8,7 +8,7 @@ package com.modishmonkee.bloodlinesascension.util;
 public final class ModColors {
 
     /** Black with a blood-red tint — backgrounds, voids, deepest liquid. */
-    public static final int BLOOD_BLACK = 0xFF140609;
+    public static final int BLOOD_BLACK = 0xFF0D0406;
     /** Dark blood red — body color, dried/venous blood. */
     public static final int BLOOD_DARK = 0xFF6B0F16;
     /** Bright blood red — arterial highlights, meniscus, fresh blood. */

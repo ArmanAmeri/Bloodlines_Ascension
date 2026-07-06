@@ -206,7 +206,7 @@ performance.
 
 | Name | Hex | Use |
 |---|---|---|
-| blood_black | `#140609` | blood-tinted black — backgrounds, voids, deepest liquid |
+| blood_black | `#0D0406` | blood-tinted black — backgrounds, voids, deepest liquid |
 | blood_dark | `#6B0F16` | dark blood red — body color, dried/venous blood |
 | blood_bright | `#C8202C` | bright blood red — highlights, meniscus, fresh blood |
 | silver | `#C0C4CC` (+shadow `#7A7E88`) | frames, linings, lesser-rank trim |
