@@ -41,16 +41,16 @@ import org.joml.Matrix4f;
 public class BloodOrbHudLayer implements LayeredDraw.Layer {
 
     // ModishMonkee's hand-drawn orb, three layers on the same 64x64 canvas
-    // (ring 4px from canvas left/bottom). Sandwich: back → liquid → ring → deco.
+    // (ring 4px from canvas left/bottom). Sandwich: panel → orb_back → liquid → orb_front.
+    /** Bottommost: the panel behind the orb. */
+    private static final ResourceLocation PANEL_TEXTURE =
+            ResourceLocation.fromNamespaceAndPath(BloodlinesAscension.MOD_ID, "textures/gui/panel.png");
     /** Dark glass interior, drawn behind the liquid. */
     private static final ResourceLocation BACK_TEXTURE =
-            ResourceLocation.fromNamespaceAndPath(BloodlinesAscension.MOD_ID, "textures/gui/blood_orb_back.png");
-    /** The gold ring, drawn over the liquid so waves tuck under its inner edge. */
-    private static final ResourceLocation RING_TEXTURE =
-            ResourceLocation.fromNamespaceAndPath(BloodlinesAscension.MOD_ID, "textures/gui/blood_orb_ring.png");
-    /** Filigree decorations, topmost. */
-    private static final ResourceLocation DECO_TEXTURE =
-            ResourceLocation.fromNamespaceAndPath(BloodlinesAscension.MOD_ID, "textures/gui/blood_orb_deco.png");
+            ResourceLocation.fromNamespaceAndPath(BloodlinesAscension.MOD_ID, "textures/gui/orb_back.png");
+    /** Ring + decorations, drawn over the liquid so waves tuck under the ring's inner edge. */
+    private static final ResourceLocation FRONT_TEXTURE =
+            ResourceLocation.fromNamespaceAndPath(BloodlinesAscension.MOD_ID, "textures/gui/orb_front.png");
     private static final int FRAME_SIZE = 64;
     /** Canvas offset from the screen's bottom-left corner (art bakes its own 4px inset). */
     private static final int CANVAS_MARGIN = 0;
@@ -61,7 +61,7 @@ public class BloodOrbHudLayer implements LayeredDraw.Layer {
     /** Liquid area radius in GUI px. */
     public static final int LIQUID_RADIUS = 20;
 
-    private static Boolean backPresent, ringPresent, decoPresent;
+    private static Boolean panelPresent, backPresent, frontPresent;
     /** Liquid cells per GUI pixel. 2 = half-pixel cells (finer); 1 = vanilla density. */
     private static final int SUB = 2;
     /** Thickness of the bright surface row, in GUI px. */
@@ -112,15 +112,18 @@ public class BloodOrbHudLayer implements LayeredDraw.Layer {
         int cy = canvasY + LIQUID_CENTER_Y;
         float time = (mc.level != null ? mc.level.getGameTime() % 240000L : 0) + partialTick;
 
+        boolean hasPanel = present(PANEL_TEXTURE, panelPresent, v -> panelPresent = v);
         boolean hasBack = present(BACK_TEXTURE, backPresent, v -> backPresent = v);
-        boolean hasRing = present(RING_TEXTURE, ringPresent, v -> ringPresent = v);
-        boolean hasDeco = present(DECO_TEXTURE, decoPresent, v -> decoPresent = v);
+        boolean hasFront = present(FRONT_TEXTURE, frontPresent, v -> frontPresent = v);
 
-        // 1. Interior behind the liquid
+        // 1. Panel (bottommost), 2. interior behind the liquid
+        if (hasPanel) {
+            guiGraphics.blit(PANEL_TEXTURE, canvasX, canvasY, 0f, 0f, FRAME_SIZE, FRAME_SIZE, FRAME_SIZE, FRAME_SIZE);
+        }
         if (hasBack) {
             guiGraphics.blit(BACK_TEXTURE, canvasX, canvasY, 0f, 0f, FRAME_SIZE, FRAME_SIZE, FRAME_SIZE, FRAME_SIZE);
-            guiGraphics.flush();
         }
+        if (hasPanel || hasBack) guiGraphics.flush();
 
         Matrix4f matrix = guiGraphics.pose().last().pose();
 
@@ -130,19 +133,16 @@ public class BloodOrbHudLayer implements LayeredDraw.Layer {
         BufferBuilder buf = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
 
         if (!hasBack) drawBackPlate(buf, matrix, cx, cy);
-        // 2. The liquid
+        // 3. The liquid
         drawLiquid(buf, matrix, cx, cy, time, partialTick);
-        if (!hasRing) drawPlaceholderRing(buf, matrix, cx, cy);
+        if (!hasFront) drawPlaceholderRing(buf, matrix, cx, cy);
 
         BufferUploader.drawWithShader(buf.buildOrThrow());
         RenderSystem.disableBlend();
 
-        // 3. Ring over the liquid, 4. filigree topmost
-        if (hasRing) {
-            guiGraphics.blit(RING_TEXTURE, canvasX, canvasY, 0f, 0f, FRAME_SIZE, FRAME_SIZE, FRAME_SIZE, FRAME_SIZE);
-        }
-        if (hasDeco) {
-            guiGraphics.blit(DECO_TEXTURE, canvasX, canvasY, 0f, 0f, FRAME_SIZE, FRAME_SIZE, FRAME_SIZE, FRAME_SIZE);
+        // 4. Ring + decorations over the liquid
+        if (hasFront) {
+            guiGraphics.blit(FRONT_TEXTURE, canvasX, canvasY, 0f, 0f, FRAME_SIZE, FRAME_SIZE, FRAME_SIZE, FRAME_SIZE);
         }
     }
 
