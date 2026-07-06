@@ -18,16 +18,17 @@ import net.neoforged.api.distmarker.OnlyIn;
 import org.joml.Matrix4f;
 
 /**
- * The blood orb HUD element (PoE-style life globe, bottom-left).
+ * The blood orb HUD element (PoE-style life globe, bottom-left) — rendered as
+ * pixel art: everything snaps to a whole-GUI-pixel grid, the liquid is drawn
+ * cell by cell from a posterized 3-shade blood palette, and the internal churn
+ * animation steps at a fixed low rate instead of sliding smoothly. Matches
+ * vanilla's 1 texture pixel = 1 GUI pixel density.
  *
  * Draw order (back to front):
- *   1. back plate  — placeholder dark disc   → replaced by orb_back.png
- *   2. liquid      — procedural: wave-sim surface + scrolling noise (this class)
- *   3. meniscus    — bright band along the liquid surface (procedural)
- *   4. glass ring  — placeholder annulus      → replaced by orb_front.png
- *
- * The frame art (back plate / glass front / panel) is hand-drawn and swapped in
- * later; only the placeholder ring and disc get deleted then. Liquid stays code.
+ *   1. back plate  — placeholder dark pixel disc  → replaced by orb_back.png
+ *   2. liquid      — procedural pixel cells (wave sim surface, this class)
+ *   3. meniscus    — 1px bright surface row (procedural)
+ *   4. glass ring  — placeholder pixel annulus    → replaced by orb_front.png
  */
 @OnlyIn(Dist.CLIENT)
 public class BloodOrbHudLayer implements LayeredDraw.Layer {
@@ -36,11 +37,21 @@ public class BloodOrbHudLayer implements LayeredDraw.Layer {
     public static final int LIQUID_RADIUS = 22;
     /** Distance of the orb's outer edge from the screen corner. */
     private static final int MARGIN = 10;
+    /** GUI px per liquid cell. 1 = vanilla texture density; 2 = extra chunky. */
+    private static final int PIXEL = 1;
+    /** GUI px per noise blob — bigger = chunkier churn pattern. */
+    private static final int NOISE_CELL = 3;
+    /** Churn animation steps per second (pixel-art style stepped motion). */
+    private static final float CHURN_FPS = 6f;
 
-    // Blood palette (vertex tint over the grayscale noise)
-    private static final float[] COLOR_DEEP = {0.32f, 0.015f, 0.045f};
-    private static final float[] COLOR_SURFACE = {0.62f, 0.06f, 0.09f};
-    private static final float[] COLOR_MENISCUS = {0.85f, 0.16f, 0.18f};
+    // Posterized blood palette, light → deep {r, g, b}
+    private static final float[][] PALETTE = {
+            {0.72f, 0.10f, 0.12f},  // light churn highlights
+            {0.52f, 0.05f, 0.08f},  // body
+            {0.33f, 0.02f, 0.05f},  // deep
+    };
+    private static final float[] COLOR_MENISCUS = {0.88f, 0.22f, 0.20f};
+    private static final float LIQUID_ALPHA = 0.96f;
 
     @Override
     public void render(GuiGraphics guiGraphics, DeltaTracker deltaTracker) {
@@ -50,116 +61,106 @@ public class BloodOrbHudLayer implements LayeredDraw.Layer {
         float partialTick = deltaTracker.getGameTimeDeltaPartialTick(true);
         int screenHeight = guiGraphics.guiHeight();
 
-        float cx = MARGIN + LIQUID_RADIUS;
-        float cy = screenHeight - MARGIN - LIQUID_RADIUS;
+        // Integer center so the whole orb sits on the pixel grid
+        int cx = MARGIN + LIQUID_RADIUS;
+        int cy = screenHeight - MARGIN - LIQUID_RADIUS;
         float time = (mc.level != null ? mc.level.getGameTime() % 240000L : 0) + partialTick;
 
         Matrix4f matrix = guiGraphics.pose().last().pose();
 
-        drawBackPlate(matrix, cx, cy);
-        drawLiquid(matrix, cx, cy, time, partialTick);
-        drawPlaceholderRing(matrix, cx, cy);
-    }
-
-    // ── 1. placeholder back plate ────────────────────────────────────────────
-    private void drawBackPlate(Matrix4f matrix, float cx, float cy) {
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
         RenderSystem.setShader(GameRenderer::getPositionColorShader);
-        BufferBuilder buf = Tesselator.getInstance().begin(VertexFormat.Mode.TRIANGLE_FAN, DefaultVertexFormat.POSITION_COLOR);
-        buf.addVertex(matrix, cx, cy, 0).setColor(0.08f, 0.01f, 0.02f, 0.85f);
-        int segments = 40;
-        for (int s = 0; s <= segments; s++) {
-            float angle = (float) (s * 2 * Math.PI / segments);
-            buf.addVertex(matrix, cx + Mth.cos(angle) * LIQUID_RADIUS, cy + Mth.sin(angle) * LIQUID_RADIUS, 0)
-                    .setColor(0.10f, 0.01f, 0.03f, 0.85f);
-        }
+        BufferBuilder buf = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
+
+        drawBackPlate(buf, matrix, cx, cy);
+        drawLiquid(buf, matrix, cx, cy, time, partialTick);
+        drawPlaceholderRing(buf, matrix, cx, cy);
+
         BufferUploader.drawWithShader(buf.buildOrThrow());
+        RenderSystem.disableBlend();
     }
 
-    // ── 2 + 3. the liquid ────────────────────────────────────────────────────
-    private void drawLiquid(Matrix4f matrix, float cx, float cy, float time, float partialTick) {
+    private static void cell(BufferBuilder buf, Matrix4f m, int x, int y, int size, float r, float g, float b, float a) {
+        buf.addVertex(m, x, y, 0).setColor(r, g, b, a);
+        buf.addVertex(m, x, y + size, 0).setColor(r, g, b, a);
+        buf.addVertex(m, x + size, y + size, 0).setColor(r, g, b, a);
+        buf.addVertex(m, x + size, y, 0).setColor(r, g, b, a);
+    }
+
+    // ── 1. placeholder back plate: blocky dark disc ─────────────────────────
+    private void drawBackPlate(BufferBuilder buf, Matrix4f matrix, int cx, int cy) {
+        int r = LIQUID_RADIUS;
+        for (int y = -r; y < r; y += PIXEL) {
+            for (int x = -r; x < r; x += PIXEL) {
+                if (x * x + y * y <= r * r) {
+                    cell(buf, matrix, cx + x, cy + y, PIXEL, 0.09f, 0.01f, 0.025f, 0.88f);
+                }
+            }
+        }
+    }
+
+    // ── 2 + 3. the liquid, cell by cell ──────────────────────────────────────
+    private void drawLiquid(BufferBuilder buf, Matrix4f matrix, int cx, int cy, float time, float partialTick) {
         float fill = ClientBloodState.getFillFraction();
         if (fill <= 0.005f) return;
 
         BloodWaveSim sim = ClientBloodState.WAVES;
         int r = LIQUID_RADIUS;
-        // Fill line: bottom of orb at fill=0, top at fill=1
         float fillY = cy + r - 2f * r * fill;
 
-        int columns = BloodWaveSim.COLUMNS;
-        float[] xs = new float[columns + 1];
-        float[] surfaceYs = new float[columns + 1];
-        float[] bottomYs = new float[columns + 1];
+        // Stepped churn animation: offsets advance CHURN_FPS times per second
+        int step = (int) (time * CHURN_FPS / 20f);
+        int scrollX = step;          // drifts sideways one noise cell per step
+        int scrollY = -(step / 2);   // slow upward crawl
 
-        for (int i = 0; i <= columns; i++) {
-            float x = cx - r + (2f * r * i) / columns;
-            float dx = x - cx;
-            float chord = (float) Math.sqrt(Math.max(0, (float) r * r - dx * dx));
-            float top = cy - chord;
-            float bottom = cy + chord;
+        for (int x = -r; x < r; x += PIXEL) {
+            int chord = (int) Math.sqrt(r * r - (x + PIXEL * 0.5f) * (x + PIXEL * 0.5f));
+            if (chord <= 0) continue;
+            int top = cy - chord;
+            int bottom = cy + chord;
 
-            int simColumn = Math.min(i, columns - 1);
+            // Wave height for this pixel column, snapped to the pixel grid
+            int simColumn = Mth.clamp((int) ((x + r) / (2f * r) * BloodWaveSim.COLUMNS), 0, BloodWaveSim.COLUMNS - 1);
             float wave = sim.sampleHeight(simColumn, partialTick);
-            // Gentle ever-present idle motion so the surface never looks dead
-            wave += Mth.sin(time * 0.11f + i * 0.55f) * 0.5f + Mth.sin(time * 0.047f + i * 0.21f) * 0.3f;
-            // Waves flatten out as the orb approaches empty/full (no room to slosh)
+            wave += Mth.sin(time * 0.11f + (x + r) * 0.28f) * 0.5f + Mth.sin(time * 0.047f + (x + r) * 0.11f) * 0.3f;
             wave *= Mth.clamp(4f * fill * (1f - fill) + 0.15f, 0f, 1f);
+            int surface = Mth.clamp(Math.round(fillY + wave), top, bottom);
+            // Snap to the cell grid so the surface moves in whole-pixel steps
+            surface = cy - Math.floorDiv(cy - surface, PIXEL) * PIXEL;
+            if (surface >= bottom) continue;
 
-            xs[i] = x;
-            surfaceYs[i] = Mth.clamp(fillY + wave, top, bottom);
-            bottomYs[i] = bottom;
+            // Meniscus: one bright pixel row at the surface
+            cell(buf, matrix, cx + x, surface, PIXEL,
+                    COLOR_MENISCUS[0], COLOR_MENISCUS[1], COLOR_MENISCUS[2], LIQUID_ALPHA);
+
+            // Body: posterized noise cells below the surface
+            for (int y = surface + PIXEL; y < bottom; y += PIXEL) {
+                int nx = Math.floorDiv(cx + x, NOISE_CELL) + scrollX;
+                int ny = Math.floorDiv(y, NOISE_CELL) + scrollY;
+                float noise = LiquidNoiseField.sample(nx, ny);
+                // Deeper liquid biases toward the darker shades
+                float depth = (y - surface) / (float) (2 * r);
+                int shade = noise + depth * 0.9f < 0.45f ? 0 : (noise + depth * 0.9f < 0.85f ? 1 : 2);
+                float[] c = PALETTE[shade];
+                cell(buf, matrix, cx + x, y, PIXEL, c[0], c[1], c[2], LIQUID_ALPHA);
+            }
         }
-
-        // Liquid body — textured strip, two scrolling noise layers baked into UV drift
-        RenderSystem.enableBlend();
-        RenderSystem.defaultBlendFunc();
-        RenderSystem.setShader(GameRenderer::getPositionTexColorShader);
-        RenderSystem.setShaderTexture(0, LiquidNoiseTexture.get());
-        float texScale = 48f; // GUI px per noise tile
-        float scrollX = time * 0.12f, scrollY = time * 0.05f;
-
-        BufferBuilder buf = Tesselator.getInstance().begin(VertexFormat.Mode.TRIANGLE_STRIP, DefaultVertexFormat.POSITION_TEX_COLOR);
-        for (int i = 0; i <= columns; i++) {
-            float depth = (bottomYs[i] - surfaceYs[i]) / (2f * r); // 0 shallow .. 1 deep
-            float sr = COLOR_SURFACE[0], sg = COLOR_SURFACE[1], sb = COLOR_SURFACE[2];
-            float dr = COLOR_DEEP[0], dg = COLOR_DEEP[1], db = COLOR_DEEP[2];
-            buf.addVertex(matrix, xs[i], surfaceYs[i], 0)
-                    .setUv((xs[i] + scrollX) / texScale, (surfaceYs[i] + scrollY) / texScale)
-                    .setColor(sr, sg, sb, 0.93f);
-            buf.addVertex(matrix, xs[i], bottomYs[i], 0)
-                    .setUv((xs[i] - scrollX * 0.6f) / texScale, (bottomYs[i] + scrollY * 1.4f) / texScale)
-                    .setColor(Mth.lerp(depth, sr, dr), Mth.lerp(depth, sg, dg), Mth.lerp(depth, sb, db), 0.96f);
-        }
-        BufferUploader.drawWithShader(buf.buildOrThrow());
-
-        // Meniscus — thin bright band hugging the surface
-        RenderSystem.setShader(GameRenderer::getPositionColorShader);
-        BufferBuilder band = Tesselator.getInstance().begin(VertexFormat.Mode.TRIANGLE_STRIP, DefaultVertexFormat.POSITION_COLOR);
-        for (int i = 0; i <= columns; i++) {
-            float bandBottom = Math.min(surfaceYs[i] + 1.6f, bottomYs[i]);
-            band.addVertex(matrix, xs[i], surfaceYs[i], 0)
-                    .setColor(COLOR_MENISCUS[0], COLOR_MENISCUS[1], COLOR_MENISCUS[2], 0.9f);
-            band.addVertex(matrix, xs[i], bandBottom, 0)
-                    .setColor(COLOR_MENISCUS[0], COLOR_MENISCUS[1], COLOR_MENISCUS[2], 0.0f);
-        }
-        BufferUploader.drawWithShader(band.buildOrThrow());
     }
 
-    // ── 4. placeholder glass ring (replaced by orb_front.png) ───────────────
-    private void drawPlaceholderRing(Matrix4f matrix, float cx, float cy) {
-        RenderSystem.setShader(GameRenderer::getPositionColorShader);
-        int segments = 48;
-        float inner = LIQUID_RADIUS - 0.5f;
-        float outer = LIQUID_RADIUS + 1.8f;
-        BufferBuilder buf = Tesselator.getInstance().begin(VertexFormat.Mode.TRIANGLE_STRIP, DefaultVertexFormat.POSITION_COLOR);
-        for (int s = 0; s <= segments; s++) {
-            float angle = (float) (s * 2 * Math.PI / segments);
-            float cos = Mth.cos(angle), sin = Mth.sin(angle);
-            buf.addVertex(matrix, cx + cos * outer, cy + sin * outer, 0).setColor(0.75f, 0.72f, 0.70f, 0.95f);
-            buf.addVertex(matrix, cx + cos * inner, cy + sin * inner, 0).setColor(0.45f, 0.42f, 0.42f, 0.95f);
+    // ── 4. placeholder glass ring: blocky annulus (replaced by orb_front.png) ─
+    private void drawPlaceholderRing(BufferBuilder buf, Matrix4f matrix, int cx, int cy) {
+        int inner = LIQUID_RADIUS;
+        int outer = LIQUID_RADIUS + 2;
+        for (int y = -outer; y < outer; y += PIXEL) {
+            for (int x = -outer; x < outer; x += PIXEL) {
+                int d2 = x * x + y * y;
+                if (d2 <= outer * outer && d2 > inner * inner) {
+                    boolean edge = d2 > (outer - 1) * (outer - 1);
+                    float shade = edge ? 0.30f : 0.55f;
+                    cell(buf, matrix, cx + x, cy + y, PIXEL, shade, shade * 0.95f, shade * 0.95f, 0.95f);
+                }
+            }
         }
-        BufferUploader.drawWithShader(buf.buildOrThrow());
-        RenderSystem.disableBlend();
     }
 }

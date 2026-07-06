@@ -88,6 +88,28 @@ public final class BloodWaveSim {
         }
     }
 
+    /**
+     * Directional slosh from camera/body rotation: positive strength pushes the
+     * right side of the surface down and the left side up (liquid inertia).
+     */
+    public void tilt(float strength) {
+        for (int i = 0; i < COLUMNS; i++) {
+            float lever = (i / (float) (COLUMNS - 1)) - 0.5f; // -0.5 left .. +0.5 right
+            velocity[i] += strength * lever * 2.0f;
+        }
+    }
+
+    /**
+     * Uniform vertical push (jumping/landing inertia): positive strength presses
+     * the whole surface down; the spring rebound produces the bounce-back.
+     * Slight per-column randomness keeps it from looking mechanical.
+     */
+    public void heave(float strength) {
+        for (int i = 0; i < COLUMNS; i++) {
+            velocity[i] += strength * (0.85f + random.nextFloat() * 0.3f);
+        }
+    }
+
     /** Interpolated height deviation for a column, in GUI pixels. */
     public float sampleHeight(int column, float partialTick) {
         return Mth.lerp(partialTick, prevHeight[column], height[column]);
