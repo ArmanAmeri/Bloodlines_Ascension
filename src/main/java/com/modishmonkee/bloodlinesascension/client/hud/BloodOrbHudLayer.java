@@ -1,5 +1,6 @@
 package com.modishmonkee.bloodlinesascension.client.hud;
 
+import com.modishmonkee.bloodlinesascension.BloodlinesAscension;
 import com.modishmonkee.bloodlinesascension.client.ClientBloodState;
 import com.modishmonkee.bloodlinesascension.util.ModColors;
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -13,6 +14,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.LayeredDraw;
 import net.minecraft.client.renderer.GameRenderer;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
@@ -36,10 +38,20 @@ import org.joml.Matrix4f;
 @OnlyIn(Dist.CLIENT)
 public class BloodOrbHudLayer implements LayeredDraw.Layer {
 
-    /** Liquid area radius in GUI px. Matches the art spec (64x64 canvas, r=22). */
-    public static final int LIQUID_RADIUS = 22;
-    /** Distance of the orb's outer edge from the screen corner. */
-    private static final int MARGIN = 10;
+    /** ModishMonkee's hand-drawn frame (64x64): gold ring 4px from canvas left/bottom. */
+    private static final ResourceLocation FRAME_TEXTURE =
+            ResourceLocation.fromNamespaceAndPath(BloodlinesAscension.MOD_ID, "textures/gui/blood_orb_frame.png");
+    private static final int FRAME_SIZE = 64;
+    /** Canvas offset from the screen's bottom-left corner (art bakes its own 4px inset). */
+    private static final int CANVAS_MARGIN = 0;
+    // Ring geometry within the 64x64 canvas — VERIFY against the real PNG once
+    // it lands (measured estimates from the mockup; liquid must stay inside the ring)
+    private static final int LIQUID_CENTER_X = 27;
+    private static final int LIQUID_CENTER_Y = 37;
+    /** Liquid area radius in GUI px. */
+    public static final int LIQUID_RADIUS = 20;
+
+    private static Boolean frameTexturePresent;
     /** Liquid cells per GUI pixel. 2 = half-pixel cells (finer); 1 = vanilla density. */
     private static final int SUB = 2;
     /** Thickness of the bright surface row, in GUI px. */
@@ -75,9 +87,17 @@ public class BloodOrbHudLayer implements LayeredDraw.Layer {
         float partialTick = deltaTracker.getGameTimeDeltaPartialTick(true);
         int screenHeight = guiGraphics.guiHeight();
 
-        int cx = MARGIN + LIQUID_RADIUS;
-        int cy = screenHeight - MARGIN - LIQUID_RADIUS;
+        int canvasX = CANVAS_MARGIN;
+        int canvasY = screenHeight - FRAME_SIZE - CANVAS_MARGIN;
+        int cx = canvasX + LIQUID_CENTER_X;
+        int cy = canvasY + LIQUID_CENTER_Y;
         float time = (mc.level != null ? mc.level.getGameTime() % 240000L : 0) + partialTick;
+
+        boolean hasFrame = hasFrameTexture();
+        if (hasFrame) {
+            guiGraphics.blit(FRAME_TEXTURE, canvasX, canvasY, 0f, 0f, FRAME_SIZE, FRAME_SIZE, FRAME_SIZE, FRAME_SIZE);
+            guiGraphics.flush();
+        }
 
         Matrix4f matrix = guiGraphics.pose().last().pose();
 
@@ -86,12 +106,20 @@ public class BloodOrbHudLayer implements LayeredDraw.Layer {
         RenderSystem.setShader(GameRenderer::getPositionColorShader);
         BufferBuilder buf = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
 
-        drawBackPlate(buf, matrix, cx, cy);
+        if (!hasFrame) drawBackPlate(buf, matrix, cx, cy);
         drawLiquid(buf, matrix, cx, cy, time, partialTick);
-        drawPlaceholderRing(buf, matrix, cx, cy);
+        if (!hasFrame) drawPlaceholderRing(buf, matrix, cx, cy);
 
         BufferUploader.drawWithShader(buf.buildOrThrow());
         RenderSystem.disableBlend();
+    }
+
+    /** True once the hand-drawn frame PNG exists (falls back to placeholders until then). */
+    private static boolean hasFrameTexture() {
+        if (frameTexturePresent == null) {
+            frameTexturePresent = Minecraft.getInstance().getResourceManager().getResource(FRAME_TEXTURE).isPresent();
+        }
+        return frameTexturePresent;
     }
 
     private static void cell(BufferBuilder buf, Matrix4f m, float x, float y, float w, float h,
