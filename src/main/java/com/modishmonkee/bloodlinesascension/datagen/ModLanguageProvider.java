@@ -13,5 +13,10 @@ public class ModLanguageProvider extends LanguageProvider {
     @Override
     protected void addTranslations() {
         add("creativetab.bloodlinesascension.bloodlines_tab", "Bloodlines: Ascension");
+
+        // Keybinds
+        add("key.categories.bloodlinesascension", "Bloodlines: Ascension");
+        add("key.bloodlinesascension.dev_blood_fill", "DEV: Fill Blood Orb");
+        add("key.bloodlinesascension.dev_blood_drain", "DEV: Drain Blood Orb");
     }
 }
