@@ -22,8 +22,10 @@ void main() {
         vec3 dark = vec3(0.420, 0.059, 0.086);   // blood_dark
         vec3 bright = vec3(0.784, 0.125, 0.173); // blood_bright
 
-        vec3 sky = mix(deep, dark, smoothstep(0.0, 0.70, lum));
-        sky = mix(sky, bright, smoothstep(0.75, 0.95, lum));
+        // Black-blood sky: blood_black dominates day and night, with only a
+        // subtle dark-red tinge where the sky is bright; the sun burns bright
+        vec3 sky = mix(deep, dark, smoothstep(0.45, 0.95, lum) * 0.45);
+        sky = mix(sky, bright, smoothstep(0.82, 0.96, lum));
         fragColor = vec4(sky, color.a);
     } else {
         fragColor = color;
