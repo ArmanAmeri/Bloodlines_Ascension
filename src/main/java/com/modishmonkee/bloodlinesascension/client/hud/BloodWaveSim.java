@@ -25,12 +25,13 @@ public final class BloodWaveSim {
 
     // Tuned for 20 ticks/second. TENSION pulls a column toward the rest line,
     // SPREAD couples neighbors (wave propagation speed), DAMPING settles it.
-    private static final float TENSION = 0.06f;
+    // Lower tension + damping closer to 1 = bigger, longer-lived waves.
+    private static final float TENSION = 0.045f;
     private static final float SPREAD = 0.18f;
-    private static final float DAMPING = 0.92f;
+    private static final float DAMPING = 0.947f;
     private static final int SPREAD_PASSES = 2;
     /** Waves can't exceed this many GUI pixels from the fill line. */
-    private static final float MAX_AMPLITUDE = 6.0f;
+    private static final float MAX_AMPLITUDE = 8.0f;
 
     private final float[] height = new float[COLUMNS];
     private final float[] prevHeight = new float[COLUMNS];

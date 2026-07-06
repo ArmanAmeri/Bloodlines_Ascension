@@ -25,6 +25,21 @@ public final class LiquidNoiseField {
         return field[Math.floorMod(x, SIZE)][Math.floorMod(y, SIZE)];
     }
 
+    /**
+     * Smooth (bilinear) wrapped lookup at fractional coords — used by the
+     * domain-warp swirl so the pattern squishes continuously instead of
+     * stepping cell to cell. The pixelation comes from the render grid.
+     */
+    public static float sampleSmooth(float x, float y) {
+        int x0 = (int) Math.floor(x), y0 = (int) Math.floor(y);
+        float tx = x - x0, ty = y - y0;
+        tx = tx * tx * (3 - 2 * tx);
+        ty = ty * ty * (3 - 2 * ty);
+        float a = sample(x0, y0), b = sample(x0 + 1, y0);
+        float c = sample(x0, y0 + 1), d = sample(x0 + 1, y0 + 1);
+        return lerp(lerp(a, b, tx), lerp(c, d, tx), ty);
+    }
+
     private static void generate() {
         float[][] octave1 = tileableValueNoise(8, 42L);   // large slow blobs
         float[][] octave2 = tileableValueNoise(16, 1337L); // fine detail
