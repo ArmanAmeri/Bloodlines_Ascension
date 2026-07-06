@@ -93,19 +93,54 @@ is worth the dependency cost.
   is in layout, textures, and interaction code either way.
 - Arsenal already has the precedent (`NukeTargetMapScreen`) plus keybind handling, HUD mixins,
   and the packet layer — all reusable patterns.
-- Plan: a `client/screen/` package with a shared "vampire codex" style screen framework
-  (tabbed: Character / Stats / Skills / Bloodline), driven by synced attachment data.
-  Custom widgets for skill nodes + connecting lines; texture-atlas art from you (§6).
+- All screen art is **hand-drawn by ModishMonkee in Aseprite** — fully custom textures, not
+  vanilla-styled widgets.
 
-## 5. Roadmap 0 → 100
+**Character screen — layout confirmed from mockup (2026-07-06):**
+- Top center, overlapping the panel's upper edge: a round **medallion/emblem** (bloodline sigil
+  and/or player portrait — TBD which).
+- Beneath it, spanning the panel: a **segmented progress bar** with tick marks (rank progression —
+  blood or pureblood progress depending on category).
+- Left column: **basic stats** — Rank, Health, Damage, Armor, other basic info.
+- Center: framed **player model preview** (live 3D render, like the inventory paper-doll).
+- Right column: framed **advanced stats** panel ("for nerds" — detailed numbers).
+
+Driven by synced attachment data; later grows tabs (Skills / Bloodline) as those systems land.
+
+## 5. Locked design: ranks, blood & pureblood (from ModishMonkee, 2026-07-06)
+
+The vampire hierarchy, in categories. Players climb the ladder; two ranks exist only as mobs.
+
+| Category | Rank(s) | Player? | Notes |
+|---|---|---|---|
+| Underlings | **Thrall** | no — mob only | Lowest of vampires, barely a vampire at all — a mindless servant/slave beast. Look inspired by gargoyles (stone statues that come alive). |
+| Lessers | **Turned / Spawn** | yes — entry rank | *Turned*: the normal path — bitten by a vampire, becomes a vampire youngling. *Spawn*: born a vampire, not turned — exists as a mob; players can start as one **only** via a gamerule ("Be born as a Vampire Spawn"). |
+| Lessers | **Knight** | yes | The bridge between the Lessers and the Nobles. |
+| Nobles | **Baron → Count → Duke** | yes | The **pureblood** mechanic begins at Baron. |
+| Elders | **Prince/Princess → Monarch** | yes | Monarch = the patriarch of the clan/bloodline. |
+| — | **Progenitor** | never | The origin of each bloodline. Future plan: progenitors as defeatable bosses (maybe monarch bosses too — parked for later). |
+
+**Blood vs. Pureblood:**
+- **Blood** — the universal vampire resource. Powers the *general* vampire abilities that all
+  lesser vampires share across every bloodline.
+- **Pureblood** — bloodline-specific. Lore: the concentration of the progenitor's blood in your
+  veins; it determines how much of the bloodline's *special* abilities you can wield. Exists only
+  from Baron upward.
+- **Progression loop:** gather blood to climb the Lessers up to Knight → from Baron on, gather
+  pureblood to climb the Nobles and Elders.
+
+Still open on ranks: see Q5 in §8 (how pureblood is gathered, what triggers a rank-up, numbers).
+
+## 6. Roadmap 0 → 100
 
 Sequenced for a fast first video (M1–M4), then the long game. Each milestone is playable/testable.
 
 **M0 — Base (done).** Clean repo, build, datagen, CI-able jar.
 
 **M1 — Vampire spine.** The systems every bloodline sits on:
-- Player state attachment: bloodline id, rank, blood pool, allocated stats/skills. Synced to
-  client; survives death/dimension change (rules TBD — open question Q1/Q2).
+- Player state attachment: bloodline id, rank (+ category), blood pool, pureblood pool
+  (reserved, active from Baron), allocated stats/skills. Synced to client; survives
+  death/dimension change (rules TBD — open question Q1/Q2).
 - Blood resource mechanic (design TBD — Q2): gain/spend hooks, HUD element.
 - Sun/weakness framework (design TBD — Q3): the "cost" side of being a vampire.
 - Debug commands (`/bloodline set|get`, `/blood add`) for testing and filming.
@@ -126,14 +161,18 @@ Sequenced for a fast first video (M1–M4), then the long game. Each milestone i
 **M4 — First video cut.** Balance pass, polish the two bloodlines, tab icon item, mod logo,
 lang, recipes + JEI/EMI compat if items are craftable. **← ship video 1.**
 
-**M5 — Ranks.** Progression layered on bloodlines (design TBD — Q5): rank data in the attachment,
-promotion triggers, rank-gated abilities/stats, rank UI.
+**M5 — Ranks.** Implement the §5 ladder: rank/category logic in the attachment, blood-driven
+rank-ups through the Lessers, pureblood mechanic from Baron up, rank-gated abilities, the
+"Be born as a Vampire Spawn" gamerule, rank display in the character screen. Blocked on Q5
+(pureblood sources, rank-up triggers, numbers).
 
-**M6 — Character/Stats/Skills menu.** The §4 screen framework: stat sheet, allocation, skill
-tree with your art. (Skeleton screen may land earlier as part of M2 if useful for the video.)
+**M6 — Character/Stats/Skills menu.** The §4 screen: confirmed mockup layout first (medallion,
+rank progress bar, basic stats, player preview, advanced stats), skill tree tab later.
+(Skeleton screen may land earlier as part of M2 if useful for the video.)
 
-**M7 — Mobs.** Custom GeckoLib mobs (designs TBD — Q6): models/anims in Blockbench, spawning
-rules, possibly bloodline-affiliated NPCs.
+**M7 — Mobs.** Custom GeckoLib mobs: **Thrall** (gargoyle-inspired servant beast) and
+**Vampire Spawn** are locked roster entries (§5); rest of roster TBD — Q6. Models/anims in
+Blockbench, spawning rules, possibly bloodline-affiliated NPCs. Long-term: Progenitor bosses.
 
 **M8 — World & polish.** Structures/worldgen if designed (Arsenal has the structure pipeline to
 copy), full-mod visual polish pass (Veil post-processing on everything worth it), config options,
@@ -141,7 +180,7 @@ performance.
 
 **M9 — Bloodlines 3–8.** One at a time through the M3 pipeline, interleaved with videos.
 
-## 6. Asset pipeline — what I need from you
+## 7. Asset pipeline — what I need from you
 
 Standard toolchain (same as Arsenal):
 
@@ -149,13 +188,13 @@ Standard toolchain (same as Arsenal):
 |---|---|---|---|
 | Entity/mob/animated-item models | Blockbench (GeckoLib plugin) | `.geo.json` + `.animation.json` + texture PNG | keep the `.bbmodel` source in-repo (build excludes it) |
 | Item/block textures | Aseprite / any pixel editor | PNG, **16×16** default (32×32 for hero items like guns were in Arsenal) | |
-| UI/menu art | pixel editor, mock in Figma/paper first | PNG texture sheets, ≤256×256 per sheet | 9-slice-friendly panels where possible |
+| UI/menu art | **Aseprite, hand-drawn** (mock layout rough first) | PNG texture sheets, ≤256×256 per sheet | 9-slice-friendly panels where possible |
 | Particle textures | pixel editor | PNG (single or sprite-sheet + `.mcmeta`) | |
 | Sounds | any DAW / freesound | **OGG Vorbis**, mono for positional SFX | registered via datagen sound provider |
 | Mod logo/icon | any | PNG (logo ~×2 wide banner for mods.toml; icon item texture 16×16) | |
 
 **Concretely needed from you, in order:**
-1. **Now (M1–M2):** nothing visual — but the *design docs*: blood/sun mechanics answers (§7) and
+1. **Now (M1–M2):** nothing visual — but the *design docs*: blood/sun mechanics answers (§8) and
    both bloodline ability lists. These block everything.
 2. **M2:** HUD art direction — blood meter + ability bar style (sketch is enough, I can draft
    placeholder art you replace later).
@@ -167,24 +206,28 @@ Standard toolchain (same as Arsenal):
    rough first; we lock layout before you paint finals.
 6. **M7:** mob models + animations in Blockbench (GeckoLib format), one per mob design.
 
-## 7. Open questions (need your answers, don't let me guess)
+## 8. Open questions (need your answers, don't let me guess)
 
-- **Q1 — Becoming a vampire:** are players vampires from world-start, or turned (item/ritual/bite)?
-  Can you be human in this mod at all? Can you leave/switch a bloodline?
+- **Q1 — Becoming a vampire:** *(partially answered: the normal path is being **bitten/turned**;
+  gamerule allows starting as a born Spawn).* Still open: how does the first bite happen in
+  gameplay (a vampire mob bites you? voluntary ritual with an NPC?)? Can players stay human?
+  Can you leave/switch a bloodline?
 - **Q2 — Blood as a resource:** does blood replace hunger, sit alongside it, or act as mana?
   How is it gained (attacking? feeding on mobs/players? items?) and what happens at zero?
 - **Q3 — Sun & weaknesses:** what does sunlight actually do (burn, debuff, power-off)? Per-bloodline
   differences (the Dacien are "Suneaters" — sun-immune? sun-powered?)? Other classic weaknesses
   (garlic, wood stakes, running water)?
 - **Q4 — Choosing a bloodline:** how does a player join The Dacien vs Tharion — altar/ritual,
-  found item, NPC, GUI choice on first night?
-- **Q5 — Ranks:** what advances rank — XP-like grind, quest-ish deeds, blood consumed, boss kills?
-  Are ranks per-bloodline (different names per line) or one shared ladder?
-- **Q6 — Mobs:** roster? Hostile vampire hunters, feral vampires, thralls, bloodline NPCs?
+  found item, NPC, GUI choice, or decided by who turned you?
+- **Q5 — Rank-up mechanics:** *(ladder itself locked — §5).* How is pureblood gathered? What
+  triggers a rank-up — hitting a threshold automatically, or a ritual/ceremony? Rough costs per
+  rank? Do rank names differ per bloodline or is the ladder shared?
+- **Q6 — Mobs:** *(Thrall + Vampire Spawn locked — §5; Progenitor bosses parked for later).*
+  What else — vampire hunters, feral vampires, bloodline NPCs?
 - **Q7 — Multiplayer stance:** are bloodlines factions (PvP between lines?) or purely personal
   progression? Matters for M1 data design.
-- **Q8 — Recording setup compat:** do you record with Iris/Sodium/shader packs? Decides how hard
-  we test against them, and weighs on the Veil decision.
+- **Q8 — Recording setup compat:** *(answered: same dev mods as Arsenal — Iris 1.8.12,
+  Sodium 0.6.13, JEI, Jade, etc. — copied into `run/mods` and boot-tested with Veil.)*
 - **Q9 — Scale of first video:** target date / scope ceiling for M4, so M3 ability count can be
   sized to fit.
 
