@@ -24,11 +24,12 @@ import org.joml.Matrix4f;
  * The blood orb HUD element (PoE-style life globe, bottom-left), rendered as
  * pixel-art cells from the canonical mod palette.
  *
- * Liquid look (matches the hand-drawn orb sketch): solid dark-red body with a
- * bright meniscus, thin dark wave-lines riding just below the surface (each
- * one calmer than the surface, so they lag like layered water in 2D games),
- * rare bright glints drifting through the upper liquid, and a dark rim along
- * the glass bottom. The surface is the wave sim plus an irregular noise swell.
+ * Liquid look (Diablo-style sphere): the blood fills a visible 3D volume —
+ * dark limb shading where the liquid meets the glass silhouette, and the
+ * liquid's top plane drawn as a tilted ellipse whose front edge (bright
+ * meniscus) rides the waves fully while the back edge lags, so the disc
+ * tumbles as it sloshes. Solid opaque body, one lagging wave-line, sparse
+ * drifting glints. Surface motion = wave sim + irregular noise swell.
  *
  * Draw order (back to front):
  *   1. back plate  — placeholder dark pixel disc  → replaced by orb_back.png
@@ -58,11 +59,17 @@ public class BloodOrbHudLayer implements LayeredDraw.Layer {
     /** Thickness of the bright surface row, in GUI px. */
     private static final float MENISCUS_PX = 1.0f;
 
-    // ── Body look: solid blood with wave-following lines (per the orb sketch) ─
-    /** Dark wave-lines under the surface. */
-    private static final int WAVE_BANDS = 2;
+    // ── Diablo-style sphere look ─────────────────────────────────────────────
+    /** Fraction of the radius where the dark silhouette shading (limb) begins. */
+    private static final float LIMB = 0.80f;
+    /** Max half-height of the surface ellipse (the visible liquid top plane), GUI px. */
+    private static final float ELLIPSE_DEPTH = 3.0f;
+    /** The back edge of the surface ellipse follows the waves this much (front = 1.0). */
+    private static final float BACK_EDGE_CALM = 0.75f;
+    /** Dark wave-line under the surface. */
+    private static final int WAVE_BANDS = 1;
     /** GUI px between the surface and each successive band. */
-    private static final float BAND_GAP = 3.5f;
+    private static final float BAND_GAP = 4.0f;
     /** How much calmer each successive band is vs the surface (0..1). */
     private static final float BAND_CALM = 0.30f;
     /** Bright glints drifting through the upper liquid. */
@@ -73,12 +80,14 @@ public class BloodOrbHudLayer implements LayeredDraw.Layer {
     /** Long slow swell height, GUI px. */
     private static final float SWELL_MAIN = 4.2f;
     /** Faster small ripple height, GUI px. */
-    private static final float SWELL_RIPPLE = 1.3f;
+    private static final float SWELL_RIPPLE = 1.9f;
 
     // Direct canonical palette, dark → bright
     private static final float[] SHADE_BLACK = ModColors.rgb(ModColors.BLOOD_BLACK);
     private static final float[] SHADE_DARK = ModColors.rgb(ModColors.BLOOD_DARK);
     private static final float[] SHADE_BRIGHT = ModColors.rgb(ModColors.BLOOD_BRIGHT);
+    /** The visible liquid top plane — slightly lighter than the body. */
+    private static final float[] SHADE_PLANE = ModColors.rgb(ModColors.mix(ModColors.BLOOD_DARK, ModColors.BLOOD_BRIGHT, 0.30f));
     private static final float LIQUID_ALPHA = 0.97f;
 
     @Override
@@ -180,22 +189,70 @@ public class BloodOrbHudLayer implements LayeredDraw.Layer {
 
             float x = cx + sx * cellSize;
 
-            // Meniscus: bright row at the surface
             float meniscusEnd = Math.min(surface + MENISCUS_PX, bottom);
+
+            // ── Body with spherical limb shading: blood_dark through the middle,
+            //    blood_black where the liquid meets the glass silhouette ─────────
+            float limbR = LIMB * r;
+            float lowerLimbStart = bottom;
+            if (Math.abs(gx) >= limbR) {
+                // Side columns sit entirely in the silhouette shadow
+                if (meniscusEnd < bottom) {
+                    cell(buf, matrix, x, meniscusEnd, cellSize, bottom - meniscusEnd,
+                            SHADE_BLACK[0], SHADE_BLACK[1], SHADE_BLACK[2], LIQUID_ALPHA);
+                }
+            } else {
+                float half = (float) Math.sqrt(limbR * limbR - gx * gx);
+                float upperLimbEnd = cy - half;
+                lowerLimbStart = cy + half;
+                if (meniscusEnd < upperLimbEnd) {
+                    cell(buf, matrix, x, meniscusEnd, cellSize, Math.min(upperLimbEnd, bottom) - meniscusEnd,
+                            SHADE_BLACK[0], SHADE_BLACK[1], SHADE_BLACK[2], LIQUID_ALPHA);
+                }
+                float bodyStart = Math.max(meniscusEnd, upperLimbEnd);
+                float bodyEnd = Math.min(bottom, lowerLimbStart);
+                if (bodyEnd > bodyStart) {
+                    cell(buf, matrix, x, bodyStart, cellSize, bodyEnd - bodyStart,
+                            SHADE_DARK[0], SHADE_DARK[1], SHADE_DARK[2], LIQUID_ALPHA);
+                }
+                if (bottom > lowerLimbStart) {
+                    cell(buf, matrix, x, lowerLimbStart, cellSize, bottom - lowerLimbStart,
+                            SHADE_BLACK[0], SHADE_BLACK[1], SHADE_BLACK[2], LIQUID_ALPHA);
+                }
+            }
+
+            // ── Surface ellipse: the liquid's top plane seen at a tilt. Front
+            //    edge rides the waves fully, the back edge lags — the disc
+            //    visibly tumbles as the liquid sloshes ─────────────────────────
+            float aF = (float) Math.sqrt(Math.max(0.5f, (float) r * r - (fillY - cy) * (fillY - cy)));
+            if (Math.abs(gx) < aF) {
+                float ef = (float) Math.sqrt(Math.max(0f, 1f - (gx / aF) * (gx / aF)));
+                float backY = fillY + wave * BACK_EDGE_CALM - ELLIPSE_DEPTH * 2f * ef;
+                backY = Math.max(Math.round(backY * SUB) / (float) SUB, top);
+                float planeH = surface - backY;
+                if (planeH > 0.01f) {
+                    if (planeH > 1f) {
+                        cell(buf, matrix, x, backY, cellSize, 1f,
+                                SHADE_BLACK[0], SHADE_BLACK[1], SHADE_BLACK[2], LIQUID_ALPHA);
+                        cell(buf, matrix, x, backY + 1f, cellSize, planeH - 1f,
+                                SHADE_PLANE[0], SHADE_PLANE[1], SHADE_PLANE[2], LIQUID_ALPHA);
+                    } else {
+                        cell(buf, matrix, x, backY, cellSize, planeH,
+                                SHADE_PLANE[0], SHADE_PLANE[1], SHADE_PLANE[2], LIQUID_ALPHA);
+                    }
+                }
+            }
+
+            // Meniscus: bright front edge of the surface
             cell(buf, matrix, x, surface, cellSize, meniscusEnd - surface,
                     SHADE_BRIGHT[0], SHADE_BRIGHT[1], SHADE_BRIGHT[2], LIQUID_ALPHA);
             if (meniscusEnd >= bottom) continue;
 
-            // Body: one solid column of blood (blood is opaque — motion comes
-            // from the surface and the wave-lines below it, not inner patterns)
-            cell(buf, matrix, x, meniscusEnd, cellSize, bottom - meniscusEnd,
-                    SHADE_DARK[0], SHADE_DARK[1], SHADE_DARK[2], LIQUID_ALPHA);
-
-            // Dark wave-lines riding below the surface, each calmer than the last
+            // Dark wave-line riding below the surface, calmer than the surface
             for (int k = 1; k <= WAVE_BANDS; k++) {
                 float bandY = fillY + wave * (1f - k * BAND_CALM) + k * BAND_GAP;
                 bandY = Math.round(bandY * SUB) / (float) SUB;
-                if (bandY > meniscusEnd + 0.5f && bandY < bottom - 1.5f) {
+                if (bandY > meniscusEnd + 0.5f && bandY < lowerLimbStart - 1f) {
                     cell(buf, matrix, x, bandY, cellSize, 1f,
                             SHADE_BLACK[0], SHADE_BLACK[1], SHADE_BLACK[2], LIQUID_ALPHA);
                 }
@@ -204,19 +261,13 @@ public class BloodOrbHudLayer implements LayeredDraw.Layer {
             // Rare bright glints drifting through the upper liquid
             for (int j = 0; j < 3; j++) {
                 float gy = surface + 3f + j * 4f;
-                if (gy >= bottom - 1.5f) break;
+                if (gy >= lowerLimbStart - 1.5f) break;
                 float g = LiquidNoiseField.sampleSmooth(colX * 0.35f - time * GLINT_SPEED, gy * 0.3f + j * 5.1f);
                 if (g > GLINT_THRESHOLD) {
                     float snapped = Math.round(gy * SUB) / (float) SUB;
                     cell(buf, matrix, x, snapped, cellSize, cellSize,
                             SHADE_BRIGHT[0], SHADE_BRIGHT[1], SHADE_BRIGHT[2], 0.85f);
                 }
-            }
-
-            // Thin dark rim hugging the bottom of the glass
-            if (bottom - meniscusEnd > 3f) {
-                cell(buf, matrix, x, bottom - 1f, cellSize, 1f,
-                        SHADE_BLACK[0], SHADE_BLACK[1], SHADE_BLACK[2], LIQUID_ALPHA);
             }
         }
     }
