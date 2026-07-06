@@ -1,6 +1,7 @@
 package com.modishmonkee.bloodlinesascension.client.hud;
 
 import com.modishmonkee.bloodlinesascension.client.ClientBloodState;
+import com.modishmonkee.bloodlinesascension.util.ModColors;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.BufferBuilder;
 import com.mojang.blaze3d.vertex.BufferUploader;
@@ -44,13 +45,13 @@ public class BloodOrbHudLayer implements LayeredDraw.Layer {
     /** Churn animation steps per second (pixel-art style stepped motion). */
     private static final float CHURN_FPS = 6f;
 
-    // Posterized blood palette, light → deep {r, g, b}
+    // Posterized blood palette, light → deep, derived from the canonical mod colors
     private static final float[][] PALETTE = {
-            {0.72f, 0.10f, 0.12f},  // light churn highlights
-            {0.52f, 0.05f, 0.08f},  // body
-            {0.33f, 0.02f, 0.05f},  // deep
+            ModColors.rgb(ModColors.mix(ModColors.BLOOD_BRIGHT, ModColors.BLOOD_DARK, 0.45f)), // churn highlights
+            ModColors.rgb(ModColors.BLOOD_DARK),                                               // body
+            ModColors.rgb(ModColors.mix(ModColors.BLOOD_DARK, ModColors.BLOOD_BLACK, 0.55f)),  // deep
     };
-    private static final float[] COLOR_MENISCUS = {0.88f, 0.22f, 0.20f};
+    private static final float[] COLOR_MENISCUS = ModColors.rgb(ModColors.BLOOD_BRIGHT);
     private static final float LIQUID_ALPHA = 0.96f;
 
     @Override
@@ -91,10 +92,11 @@ public class BloodOrbHudLayer implements LayeredDraw.Layer {
     // ── 1. placeholder back plate: blocky dark disc ─────────────────────────
     private void drawBackPlate(BufferBuilder buf, Matrix4f matrix, int cx, int cy) {
         int r = LIQUID_RADIUS;
+        float[] back = ModColors.rgb(ModColors.BLOOD_BLACK);
         for (int y = -r; y < r; y += PIXEL) {
             for (int x = -r; x < r; x += PIXEL) {
                 if (x * x + y * y <= r * r) {
-                    cell(buf, matrix, cx + x, cy + y, PIXEL, 0.09f, 0.01f, 0.025f, 0.88f);
+                    cell(buf, matrix, cx + x, cy + y, PIXEL, back[0], back[1], back[2], 0.88f);
                 }
             }
         }
@@ -152,13 +154,14 @@ public class BloodOrbHudLayer implements LayeredDraw.Layer {
     private void drawPlaceholderRing(BufferBuilder buf, Matrix4f matrix, int cx, int cy) {
         int inner = LIQUID_RADIUS;
         int outer = LIQUID_RADIUS + 2;
+        float[] silver = ModColors.rgb(ModColors.SILVER);
+        float[] shadow = ModColors.rgb(ModColors.SILVER_SHADOW);
         for (int y = -outer; y < outer; y += PIXEL) {
             for (int x = -outer; x < outer; x += PIXEL) {
                 int d2 = x * x + y * y;
                 if (d2 <= outer * outer && d2 > inner * inner) {
-                    boolean edge = d2 > (outer - 1) * (outer - 1);
-                    float shade = edge ? 0.30f : 0.55f;
-                    cell(buf, matrix, cx + x, cy + y, PIXEL, shade, shade * 0.95f, shade * 0.95f, 0.95f);
+                    float[] c = d2 > (outer - 1) * (outer - 1) ? shadow : silver;
+                    cell(buf, matrix, cx + x, cy + y, PIXEL, c[0], c[1], c[2], 0.95f);
                 }
             }
         }

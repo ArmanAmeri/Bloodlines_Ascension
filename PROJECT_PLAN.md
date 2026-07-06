@@ -201,6 +201,19 @@ performance.
 
 ## 7. Asset pipeline — what I need from you
 
+**Canonical palette (locked 2026-07-06)** — all art and rendering derives from these; defined in
+`util/ModColors.java` and importable into Aseprite from `art/bloodlines_palette.gpl`:
+
+| Name | Hex | Use |
+|---|---|---|
+| blood_black | `#140609` | blood-tinted black — backgrounds, voids, deepest liquid |
+| blood_dark | `#6B0F16` | dark blood red — body color, dried/venous blood |
+| blood_bright | `#C8202C` | bright blood red — highlights, meniscus, fresh blood |
+| silver | `#C0C4CC` (+shadow `#7A7E88`) | frames, linings, lesser-rank trim |
+| gold | `#D9A93F` (+shadow `#8F6B22`) | frames, linings, noble/elder-rank trim |
+
+`.aseprite` sources live in `art/` alongside the palette.
+
 Standard toolchain (same as Arsenal):
 
 | Asset type | Tool | Format | Notes |

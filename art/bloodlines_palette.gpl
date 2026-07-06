@@ -1,0 +1,12 @@
+GIMP Palette
+Name: Bloodlines Ascension
+Columns: 7
+# Canonical mod palette — import into Aseprite (drag onto palette panel).
+# Keep in sync with src/.../util/ModColors.java
+ 20   6   9	blood_black
+107  15  22	blood_dark
+200  32  44	blood_bright
+192 196 204	silver
+122 126 136	silver_shadow
+217 169  63	gold
+143 107  34	gold_shadow
