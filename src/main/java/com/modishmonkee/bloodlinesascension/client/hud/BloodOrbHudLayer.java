@@ -24,11 +24,11 @@ import org.joml.Matrix4f;
  * The blood orb HUD element (PoE-style life globe, bottom-left), rendered as
  * pixel-art cells from the canonical mod palette.
  *
- * The liquid body reads as circulating blood: horizontally-stretched current
- * streaks drift sideways through the orb, deeper liquid flowing faster than
- * the surface (shear), the streaks gently undulating as they go. The surface
- * is the wave sim plus an irregular noise-driven swell. Cells stay chunky
- * (pixelation), the motion is smooth.
+ * Liquid look (matches the hand-drawn orb sketch): solid dark-red body with a
+ * bright meniscus, thin dark wave-lines riding just below the surface (each
+ * one calmer than the surface, so they lag like layered water in 2D games),
+ * rare bright glints drifting through the upper liquid, and a dark rim along
+ * the glass bottom. The surface is the wave sim plus an irregular noise swell.
  *
  * Draw order (back to front):
  *   1. back plate  — placeholder dark pixel disc  → replaced by orb_back.png
@@ -58,20 +58,16 @@ public class BloodOrbHudLayer implements LayeredDraw.Layer {
     /** Thickness of the bright surface row, in GUI px. */
     private static final float MENISCUS_PX = 1.0f;
 
-    // ── Flow pattern tuning: horizontal blood currents drifting through the orb ─
-    /** Streak length: smaller = longer, lazier horizontal streaks. */
-    private static final float PATTERN_SCALE_X = 0.09f;
-    /** Streak thickness: larger = thinner streaks (stretch ratio vs X). */
-    private static final float PATTERN_SCALE_Y = 0.30f;
-    /** Base sideways drift per tick. */
-    private static final float FLOW_SPEED = 0.05f;
-    /** Deeper liquid flows this much faster than the surface (shear = stirred look). */
-    private static final float FLOW_SHEAR = 0.8f;
-    /** Vertical wobble of the streaks as they drift. */
-    private static final float UNDULATION = 0.45f;
-    /** Posterize thresholds: below t0 = blood_black, below t1 = blood_dark, else blood_bright. */
-    private static final float THRESHOLD_BLACK = 0.34f;
-    private static final float THRESHOLD_DARK = 0.82f;
+    // ── Body look: solid blood with wave-following lines (per the orb sketch) ─
+    /** Dark wave-lines under the surface. */
+    private static final int WAVE_BANDS = 2;
+    /** GUI px between the surface and each successive band. */
+    private static final float BAND_GAP = 3.5f;
+    /** How much calmer each successive band is vs the surface (0..1). */
+    private static final float BAND_CALM = 0.30f;
+    /** Bright glints drifting through the upper liquid. */
+    private static final float GLINT_THRESHOLD = 0.80f;
+    private static final float GLINT_SPEED = 0.11f;
 
     // ── Idle surface swell (noise-driven — irregular, not sine-rigid) ────────
     /** Long slow swell height, GUI px. */
@@ -188,19 +184,39 @@ public class BloodOrbHudLayer implements LayeredDraw.Layer {
             float meniscusEnd = Math.min(surface + MENISCUS_PX, bottom);
             cell(buf, matrix, x, surface, cellSize, meniscusEnd - surface,
                     SHADE_BRIGHT[0], SHADE_BRIGHT[1], SHADE_BRIGHT[2], LIQUID_ALPHA);
+            if (meniscusEnd >= bottom) continue;
 
-            // Body: horizontal current streaks, faster the deeper you go (shear)
-            float liquidDepth = Math.max(1f, bottom - meniscusEnd);
-            for (float y = meniscusEnd; y < bottom; y += cellSize) {
-                float depthNorm = (y - meniscusEnd) / liquidDepth; // 0 surface .. 1 bottom
-                float px = colX * PATTERN_SCALE_X - time * FLOW_SPEED * (1f + depthNorm * FLOW_SHEAR);
-                float py = (y - cy + r) * PATTERN_SCALE_Y
-                        + Mth.sin(time * 0.08f + colX * 0.25f) * UNDULATION;
-                float n = LiquidNoiseField.sampleSmooth(px, py);
+            // Body: one solid column of blood (blood is opaque — motion comes
+            // from the surface and the wave-lines below it, not inner patterns)
+            cell(buf, matrix, x, meniscusEnd, cellSize, bottom - meniscusEnd,
+                    SHADE_DARK[0], SHADE_DARK[1], SHADE_DARK[2], LIQUID_ALPHA);
 
-                float[] shade = n < THRESHOLD_BLACK ? SHADE_BLACK : (n < THRESHOLD_DARK ? SHADE_DARK : SHADE_BRIGHT);
-                float h = Math.min(cellSize, bottom - y);
-                cell(buf, matrix, x, y, cellSize, h, shade[0], shade[1], shade[2], LIQUID_ALPHA);
+            // Dark wave-lines riding below the surface, each calmer than the last
+            for (int k = 1; k <= WAVE_BANDS; k++) {
+                float bandY = fillY + wave * (1f - k * BAND_CALM) + k * BAND_GAP;
+                bandY = Math.round(bandY * SUB) / (float) SUB;
+                if (bandY > meniscusEnd + 0.5f && bandY < bottom - 1.5f) {
+                    cell(buf, matrix, x, bandY, cellSize, 1f,
+                            SHADE_BLACK[0], SHADE_BLACK[1], SHADE_BLACK[2], LIQUID_ALPHA);
+                }
+            }
+
+            // Rare bright glints drifting through the upper liquid
+            for (int j = 0; j < 3; j++) {
+                float gy = surface + 3f + j * 4f;
+                if (gy >= bottom - 1.5f) break;
+                float g = LiquidNoiseField.sampleSmooth(colX * 0.35f - time * GLINT_SPEED, gy * 0.3f + j * 5.1f);
+                if (g > GLINT_THRESHOLD) {
+                    float snapped = Math.round(gy * SUB) / (float) SUB;
+                    cell(buf, matrix, x, snapped, cellSize, cellSize,
+                            SHADE_BRIGHT[0], SHADE_BRIGHT[1], SHADE_BRIGHT[2], 0.85f);
+                }
+            }
+
+            // Thin dark rim hugging the bottom of the glass
+            if (bottom - meniscusEnd > 3f) {
+                cell(buf, matrix, x, bottom - 1f, cellSize, 1f,
+                        SHADE_BLACK[0], SHADE_BLACK[1], SHADE_BLACK[2], LIQUID_ALPHA);
             }
         }
     }
