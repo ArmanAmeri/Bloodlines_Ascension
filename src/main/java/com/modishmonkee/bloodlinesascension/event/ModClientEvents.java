@@ -4,6 +4,8 @@ import com.modishmonkee.bloodlinesascension.BloodlinesAscension;
 import com.modishmonkee.bloodlinesascension.client.ClientBloodState;
 import com.modishmonkee.bloodlinesascension.client.ModKeyBindings;
 import com.modishmonkee.bloodlinesascension.client.hud.BloodOrbHudLayer;
+import foundry.veil.api.client.render.VeilRenderSystem;
+import foundry.veil.api.client.render.post.PostProcessingManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
@@ -92,6 +94,18 @@ public class ModClientEvents {
         lastPitch = pitch;
         lastVelocityY = velocityY;
         wasOnGround = onGround;
+    }
+
+    // ── TEST: Veil learning spike — blood sky post pipeline ──────────────────
+    private static final ResourceLocation BLOOD_SKY_PIPELINE =
+            ResourceLocation.fromNamespaceAndPath(BloodlinesAscension.MOD_ID, "blood_sky");
+
+    @SubscribeEvent
+    public static void onClientLogin(ClientPlayerNetworkEvent.LoggingIn event) {
+        PostProcessingManager post = VeilRenderSystem.renderer().getPostProcessingManager();
+        if (!post.isActive(BLOOD_SKY_PIPELINE)) {
+            post.add(BLOOD_SKY_PIPELINE);
+        }
     }
 
     /** Don't let blood/wave state bleed into the next world (same lesson as Arsenal's trackers). */

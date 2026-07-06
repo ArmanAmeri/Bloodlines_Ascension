@@ -1,0 +1,10 @@
+{
+  "stages": [
+    {
+      "type": "veil:blit",
+      "shader": "bloodlinesascension:blood_sky",
+      "in": "minecraft:main",
+      "clear": false
+    }
+  ]
+}
