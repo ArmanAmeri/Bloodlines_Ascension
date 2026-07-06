@@ -17,7 +17,8 @@ Palette: import [bloodlines_palette.gpl](bloodlines_palette.gpl) into Aseprite
 
 | File | Path | Size | Notes |
 |---|---|---|---|
-| Orb frame | `src/main/resources/assets/bloodlinesascension/textures/gui/blood_orb_frame.png` | 64×64 | Ring 4px from canvas left + bottom. Everything in one layer: interior (behind liquid), ring, filigree. A placeholder is committed — overwrite it. |
+| Orb frame | `src/main/resources/assets/bloodlinesascension/textures/gui/blood_orb_frame.png` | 64×64 | **Required.** Ring 4px from canvas left + bottom. Everything in one layer: interior (behind liquid), ring, filigree. A placeholder is committed — overwrite it. |
+| Orb front overlay | `src/main/resources/assets/bloodlinesascension/textures/gui/blood_orb_front.png` | 64×64 | **Optional.** Drawn OVER the liquid — glass shine/reflection pixels only, rest transparent. Skip the file entirely if not wanted. |
 
 Liquid geometry wired in code (`BloodOrbHudLayer`): center (27, 37), radius 20 on the
 64×64 canvas. If the ring's inner circle differs, say so — three constants to change.

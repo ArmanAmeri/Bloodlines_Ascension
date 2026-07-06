@@ -43,6 +43,9 @@ public class BloodOrbHudLayer implements LayeredDraw.Layer {
     /** ModishMonkee's hand-drawn frame (64x64): gold ring 4px from canvas left/bottom. */
     private static final ResourceLocation FRAME_TEXTURE =
             ResourceLocation.fromNamespaceAndPath(BloodlinesAscension.MOD_ID, "textures/gui/blood_orb_frame.png");
+    /** Optional overlay drawn OVER the liquid (glass shine etc.) — same 64x64 canvas. */
+    private static final ResourceLocation FRONT_TEXTURE =
+            ResourceLocation.fromNamespaceAndPath(BloodlinesAscension.MOD_ID, "textures/gui/blood_orb_front.png");
     private static final int FRAME_SIZE = 64;
     /** Canvas offset from the screen's bottom-left corner (art bakes its own 4px inset). */
     private static final int CANVAS_MARGIN = 0;
@@ -54,6 +57,7 @@ public class BloodOrbHudLayer implements LayeredDraw.Layer {
     public static final int LIQUID_RADIUS = 20;
 
     private static Boolean frameTexturePresent;
+    private static Boolean frontTexturePresent;
     /** Liquid cells per GUI pixel. 2 = half-pixel cells (finer); 1 = vanilla density. */
     private static final int SUB = 2;
     /** Thickness of the bright surface row, in GUI px. */
@@ -123,6 +127,11 @@ public class BloodOrbHudLayer implements LayeredDraw.Layer {
 
         BufferUploader.drawWithShader(buf.buildOrThrow());
         RenderSystem.disableBlend();
+
+        // Optional glass-shine overlay on top of the liquid
+        if (hasFrontTexture()) {
+            guiGraphics.blit(FRONT_TEXTURE, canvasX, canvasY, 0f, 0f, FRAME_SIZE, FRAME_SIZE, FRAME_SIZE, FRAME_SIZE);
+        }
     }
 
     /** True once the hand-drawn frame PNG exists (falls back to placeholders until then). */
@@ -131,6 +140,13 @@ public class BloodOrbHudLayer implements LayeredDraw.Layer {
             frameTexturePresent = Minecraft.getInstance().getResourceManager().getResource(FRAME_TEXTURE).isPresent();
         }
         return frameTexturePresent;
+    }
+
+    private static boolean hasFrontTexture() {
+        if (frontTexturePresent == null) {
+            frontTexturePresent = Minecraft.getInstance().getResourceManager().getResource(FRONT_TEXTURE).isPresent();
+        }
+        return frontTexturePresent;
     }
 
     private static void cell(BufferBuilder buf, Matrix4f m, float x, float y, float w, float h,
