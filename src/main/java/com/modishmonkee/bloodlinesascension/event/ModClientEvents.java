@@ -21,6 +21,8 @@ import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
 @EventBusSubscriber(modid = BloodlinesAscension.MOD_ID, value = Dist.CLIENT)
 public class ModClientEvents {
 
+    private static final org.slf4j.Logger LOGGER = com.mojang.logging.LogUtils.getLogger();
+
     // ── Liquid inertia: previous-tick movement state ─────────────────────────
     private static float lastYaw = Float.NaN;
     private static float lastPitch;
@@ -104,7 +106,11 @@ public class ModClientEvents {
     public static void onClientLogin(ClientPlayerNetworkEvent.LoggingIn event) {
         PostProcessingManager post = VeilRenderSystem.renderer().getPostProcessingManager();
         if (!post.isActive(BLOOD_SKY_PIPELINE)) {
-            post.add(BLOOD_SKY_PIPELINE);
+            if (post.add(BLOOD_SKY_PIPELINE)) {
+                LOGGER.info("Blood sky post pipeline enabled");
+            } else {
+                LOGGER.warn("Blood sky post pipeline not found — check pinwheel/post/blood_sky.json");
+            }
         }
     }
 
