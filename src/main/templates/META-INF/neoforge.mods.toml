@@ -33,3 +33,10 @@ config="${mod_id}.mixins.json"
     versionRange="[4.7,)"
     ordering="AFTER"
     side="BOTH"
+
+[[dependencies.${mod_id}]]
+    modId="veil"
+    type="required"
+    versionRange="[4.0,)"
+    ordering="AFTER"
+    side="BOTH"

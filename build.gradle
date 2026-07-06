@@ -23,6 +23,8 @@ repositories {
         url "https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/"
         content { includeGroup "software.bernie.geckolib" }
     }
+    maven { url "https://maven.blamejared.com" }           // Veil
+    maven { url "https://maven.ryanhcode.dev/releases" }   // Veil deps (imgui-mc)
 }
 
 base {
@@ -86,8 +88,11 @@ configurations {
 }
 
 dependencies {
-    // GeckoLib — animated entity/item models
+    // GeckoLib — animated entity/item models (the animation rig)
     implementation "software.bernie.geckolib:geckolib-neoforge-1.21.1:${geckolib_version}"
+
+    // Veil — shaders, post-processing, particle systems, dynamic lights (the VFX layer)
+    implementation "foundry.veil:veil-neoforge-1.21.1:${veil_version}"
 }
 
 var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {

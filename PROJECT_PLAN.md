@@ -50,43 +50,39 @@ mod-specific packages `bloodline/`, `rank/`, and `skill/` when those systems sta
 | NeoForge Data Attachments | built-in | per-player vampire state (bloodline, rank, stats) | **locked** — no external lib needed |
 | NeoForge `StreamCodec` payloads | built-in | client↔server sync, ability triggers (Arsenal `ModNetwork` pattern) | **locked** |
 | Vanilla GUI (`Screen`/`GuiGraphics`) | built-in | stats/skills menu, rank UI, HUD overlays | **locked** — see §4 |
+| Veil | 4.3.0 (neoforge-1.21.1) | shaders, post-processing, particle systems, dynamic lights — the VFX layer | **locked** — required dep, see §3 |
 | JEI / EMI | optional, compile-time API | recipe viewer compat once we have recipes | deferred (copy Arsenal's setup when needed) |
-| Veil | 1.21.1 (active) | post-processing / advanced rendering | **deferred — not in v1**, see §3 |
 
 Rule: nothing else gets added without updating this table.
 
-## 3. Veil assessment (requested research)
+## 3. Veil — adopted (decision 2026-07-06)
 
 **What it is:** [Veil](https://github.com/FoundryMC/Veil) (FoundryMC) is a rendering library —
 JSON-driven framebuffers and post-processing pipelines, full OpenGL shader support, shader
 injection/modification, data-driven render types, dynamic lights, Quasar (data-driven particle
 systems), and Necromancer (bone-based animation). ~312K downloads on
-[Modrinth](https://modrinth.com/mod/veil), supports 1.21.1 on NeoForge and Fabric, actively
-maintained (latest release July 2026, 1,300+ commits on the 1.21 branch).
+[Modrinth](https://modrinth.com/mod/veil), 1.21.1 NeoForge supported, actively maintained
+(4.3.0 released July 2026).
 
-**What it would buy us over vanilla + GeckoLib:**
-- Real full-screen post-processing — vampire blood-sense vision, sun-scorch screen distortion,
-  desaturation/red-tint worlds. Vanilla post shaders exist but are awkward and fight other mods.
-- Quasar: particle systems defined in JSON instead of one hand-written particle class per effect
-  (Arsenal needed a Java class per particle — `MushroomCloudParticle`, `LazerTrailParticle`, etc.).
-- Dynamic lights and custom render pipelines for glowing blood magic.
+**Decision:** locked in as a required dependency (`foundry.veil:veil-neoforge-1.21.1:4.3.0`).
+Visual quality is the priority for this mod; Veil's post-processing and particle systems are the
+ceiling-raiser (blood-sense vision, sun-scorch distortion, high-end ability VFX) and that ceiling
+is worth the dependency cost.
 
-**Costs and risks:**
-- Becomes a *required runtime dependency for every player*, plus its ImGui companion lib.
-- Documentation is thin — half the wiki pages currently don't load; learning happens by reading
-  the example mod and source. That's slow, and we're optimizing for a fast first video.
-- Compat surface: Veil needs specific Sodium versions for its buffer management; interaction with
-  Iris/shader-pack setups (which you likely record with) is an open risk.
-- Everything in the first two bloodlines' ability visuals is achievable with the toolkit already
-  proven in Arsenal: custom `RenderType`s, GeckoLib render layers, custom particles, screen shake,
-  full-screen overlay effects (flashbang), HUD mixins.
+**Division of labor — Veil does NOT replace GeckoLib.** They solve different problems and stack:
+- **GeckoLib** owns models, rigs, and keyframed animation (entities, mobs, animated items) —
+  the Blockbench workflow stays exactly as in Arsenal. We deliberately ignore Veil's Necromancer
+  animation system: less mature, no established Blockbench pipeline, no reason to switch.
+- **Veil** owns everything shader/VFX: post-processing screens, Quasar JSON particle systems
+  (instead of one Java class per particle like Arsenal), dynamic lights, custom render types.
+  A GeckoLib-animated mob can have Veil-driven aura/trail/light effects layered on top.
 
-**Recommendation: skip Veil for v1, revisit at the polish milestone (M8).** Ship the first video
-on vanilla + GeckoLib — zero new-library risk, known workflow. Adopt Veil later *if* a designed
-effect genuinely needs post-processing (e.g. a full-screen blood-vision ability), and evaluate
-Sodium/Iris interaction on your actual recording setup before committing. If you'd rather bet on
-maximum visual ceiling now and accept the learning curve + dependency, say so and I'll wire it in
-— but it should be a deliberate call, not a default.
+**Risks accepted, to manage actively:**
+- Docs are thin (half the wiki doesn't load) — we learn from the example mod + source; budget
+  extra time for the *first* Veil effect, it gets cheap after that.
+- Compat: Veil couples to specific Sodium versions; test on the actual recording setup
+  (Iris/Sodium/shader packs — Q8) *early*, not at video-crunch time.
+- Pin the Veil version; upgrade deliberately, never mid-milestone.
 
 ## 4. UI approach (ranks + stats/skills menu)
 
@@ -140,7 +136,8 @@ tree with your art. (Skeleton screen may land earlier as part of M2 if useful fo
 rules, possibly bloodline-affiliated NPCs.
 
 **M8 — World & polish.** Structures/worldgen if designed (Arsenal has the structure pipeline to
-copy), Veil re-evaluation for a visual-overhaul pass, config options, performance.
+copy), full-mod visual polish pass (Veil post-processing on everything worth it), config options,
+performance.
 
 **M9 — Bloodlines 3–8.** One at a time through the M3 pipeline, interleaved with videos.
 
