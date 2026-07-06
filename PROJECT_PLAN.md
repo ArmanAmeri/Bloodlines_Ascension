@@ -107,6 +107,21 @@ is worth the dependency cost.
 
 Driven by synced attachment data; later grows tabs (Skills / Bloodline) as those systems land.
 
+**In-game HUD — blood orb (design 2026-07-06, PoE-2-life-globe inspired):**
+- A round **blood orb** anchored at a bottom corner of the screen near the hotbar (corner TBD),
+  overlapping a rounded panel behind it. Liquid level = current blood.
+- The liquid is **dynamic, not a static sprite**: a 1D spring-wave surface simulation on the CPU
+  (reacts to gameplay — taking damage or spending blood makes it slosh) rendered through a custom
+  Veil fragment shader (circle-masked, scrolling noise for the liquid body, bright meniscus line,
+  glass highlights). Fallback if the shader path fights us: same wave sim rendered as a
+  vertex-colored mesh with a scrolling texture — still animated, no custom shader.
+- Orb glass/frame art: hand-drawn (Aseprite); liquid: procedural.
+- **Skill activation**: potentially many known skills, few active — an **equipped-skill bar**
+  (~4–6 keybound slots, count TBD/possibly rank-gated) rendered beside the orb, with cooldown
+  sweeps and "not enough blood" dimming. Skills are assigned to slots from the skills screen;
+  optional later addition: hold-key radial wheel for quick re-assignment in combat.
+  Slot count / corner / radial: open — Q10.
+
 ## 5. Locked design: ranks, blood & pureblood (from ModishMonkee, 2026-07-06)
 
 The vampire hierarchy, in categories. Players climb the ladder; two ranks exist only as mobs.
@@ -230,6 +245,9 @@ Standard toolchain (same as Arsenal):
   Sodium 0.6.13, JEI, Jade, etc. — copied into `run/mods` and boot-tested with Veil.)*
 - **Q9 — Scale of first video:** target date / scope ceiling for M4, so M3 ability count can be
   sized to fit.
+- **Q10 — HUD details:** which bottom corner for the blood orb? How many skill slots (fixed, or
+  growing with rank)? Is the character-screen medallion the same blood orb, or a separate
+  sigil/portrait? Radial quick-swap wheel: yes/no/later?
 
 ---
 
