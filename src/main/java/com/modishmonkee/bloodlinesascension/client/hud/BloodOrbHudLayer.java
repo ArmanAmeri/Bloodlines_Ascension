@@ -40,12 +40,17 @@ import org.joml.Matrix4f;
 @OnlyIn(Dist.CLIENT)
 public class BloodOrbHudLayer implements LayeredDraw.Layer {
 
-    /** ModishMonkee's hand-drawn frame (64x64): gold ring 4px from canvas left/bottom. */
-    private static final ResourceLocation FRAME_TEXTURE =
-            ResourceLocation.fromNamespaceAndPath(BloodlinesAscension.MOD_ID, "textures/gui/blood_orb_frame.png");
-    /** Optional overlay drawn OVER the liquid (glass shine etc.) — same 64x64 canvas. */
-    private static final ResourceLocation FRONT_TEXTURE =
-            ResourceLocation.fromNamespaceAndPath(BloodlinesAscension.MOD_ID, "textures/gui/blood_orb_front.png");
+    // ModishMonkee's hand-drawn orb, three layers on the same 64x64 canvas
+    // (ring 4px from canvas left/bottom). Sandwich: back → liquid → ring → deco.
+    /** Dark glass interior, drawn behind the liquid. */
+    private static final ResourceLocation BACK_TEXTURE =
+            ResourceLocation.fromNamespaceAndPath(BloodlinesAscension.MOD_ID, "textures/gui/blood_orb_back.png");
+    /** The gold ring, drawn over the liquid so waves tuck under its inner edge. */
+    private static final ResourceLocation RING_TEXTURE =
+            ResourceLocation.fromNamespaceAndPath(BloodlinesAscension.MOD_ID, "textures/gui/blood_orb_ring.png");
+    /** Filigree decorations, topmost. */
+    private static final ResourceLocation DECO_TEXTURE =
+            ResourceLocation.fromNamespaceAndPath(BloodlinesAscension.MOD_ID, "textures/gui/blood_orb_deco.png");
     private static final int FRAME_SIZE = 64;
     /** Canvas offset from the screen's bottom-left corner (art bakes its own 4px inset). */
     private static final int CANVAS_MARGIN = 0;
@@ -56,8 +61,7 @@ public class BloodOrbHudLayer implements LayeredDraw.Layer {
     /** Liquid area radius in GUI px. */
     public static final int LIQUID_RADIUS = 20;
 
-    private static Boolean frameTexturePresent;
-    private static Boolean frontTexturePresent;
+    private static Boolean backPresent, ringPresent, decoPresent;
     /** Liquid cells per GUI pixel. 2 = half-pixel cells (finer); 1 = vanilla density. */
     private static final int SUB = 2;
     /** Thickness of the bright surface row, in GUI px. */
@@ -108,9 +112,13 @@ public class BloodOrbHudLayer implements LayeredDraw.Layer {
         int cy = canvasY + LIQUID_CENTER_Y;
         float time = (mc.level != null ? mc.level.getGameTime() % 240000L : 0) + partialTick;
 
-        boolean hasFrame = hasFrameTexture();
-        if (hasFrame) {
-            guiGraphics.blit(FRAME_TEXTURE, canvasX, canvasY, 0f, 0f, FRAME_SIZE, FRAME_SIZE, FRAME_SIZE, FRAME_SIZE);
+        boolean hasBack = present(BACK_TEXTURE, backPresent, v -> backPresent = v);
+        boolean hasRing = present(RING_TEXTURE, ringPresent, v -> ringPresent = v);
+        boolean hasDeco = present(DECO_TEXTURE, decoPresent, v -> decoPresent = v);
+
+        // 1. Interior behind the liquid
+        if (hasBack) {
+            guiGraphics.blit(BACK_TEXTURE, canvasX, canvasY, 0f, 0f, FRAME_SIZE, FRAME_SIZE, FRAME_SIZE, FRAME_SIZE);
             guiGraphics.flush();
         }
 
@@ -121,32 +129,30 @@ public class BloodOrbHudLayer implements LayeredDraw.Layer {
         RenderSystem.setShader(GameRenderer::getPositionColorShader);
         BufferBuilder buf = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
 
-        if (!hasFrame) drawBackPlate(buf, matrix, cx, cy);
+        if (!hasBack) drawBackPlate(buf, matrix, cx, cy);
+        // 2. The liquid
         drawLiquid(buf, matrix, cx, cy, time, partialTick);
-        if (!hasFrame) drawPlaceholderRing(buf, matrix, cx, cy);
+        if (!hasRing) drawPlaceholderRing(buf, matrix, cx, cy);
 
         BufferUploader.drawWithShader(buf.buildOrThrow());
         RenderSystem.disableBlend();
 
-        // Optional glass-shine overlay on top of the liquid
-        if (hasFrontTexture()) {
-            guiGraphics.blit(FRONT_TEXTURE, canvasX, canvasY, 0f, 0f, FRAME_SIZE, FRAME_SIZE, FRAME_SIZE, FRAME_SIZE);
+        // 3. Ring over the liquid, 4. filigree topmost
+        if (hasRing) {
+            guiGraphics.blit(RING_TEXTURE, canvasX, canvasY, 0f, 0f, FRAME_SIZE, FRAME_SIZE, FRAME_SIZE, FRAME_SIZE);
+        }
+        if (hasDeco) {
+            guiGraphics.blit(DECO_TEXTURE, canvasX, canvasY, 0f, 0f, FRAME_SIZE, FRAME_SIZE, FRAME_SIZE, FRAME_SIZE);
         }
     }
 
-    /** True once the hand-drawn frame PNG exists (falls back to placeholders until then). */
-    private static boolean hasFrameTexture() {
-        if (frameTexturePresent == null) {
-            frameTexturePresent = Minecraft.getInstance().getResourceManager().getResource(FRAME_TEXTURE).isPresent();
+    /** Cached resource-presence check (falls back to placeholder drawing while absent). */
+    private static boolean present(ResourceLocation texture, Boolean cached, java.util.function.Consumer<Boolean> store) {
+        if (cached == null) {
+            cached = Minecraft.getInstance().getResourceManager().getResource(texture).isPresent();
+            store.accept(cached);
         }
-        return frameTexturePresent;
-    }
-
-    private static boolean hasFrontTexture() {
-        if (frontTexturePresent == null) {
-            frontTexturePresent = Minecraft.getInstance().getResourceManager().getResource(FRONT_TEXTURE).isPresent();
-        }
-        return frontTexturePresent;
+        return cached;
     }
 
     private static void cell(BufferBuilder buf, Matrix4f m, float x, float y, float w, float h,

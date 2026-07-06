@@ -15,10 +15,16 @@ Palette: import [bloodlines_palette.gpl](bloodlines_palette.gpl) into Aseprite
 
 ## Blood orb HUD
 
+Three layers, all on the same 64×64 canvas (ring 4px from canvas left + bottom), exported
+as separate PNGs. Draw order in game: back → liquid (code) → ring → deco.
+
 | File | Path | Size | Notes |
 |---|---|---|---|
-| Orb frame | `src/main/resources/assets/bloodlinesascension/textures/gui/blood_orb_frame.png` | 64×64 | **Required.** Ring 4px from canvas left + bottom. Everything in one layer: interior (behind liquid), ring, filigree. A placeholder is committed — overwrite it. |
-| Orb front overlay | `src/main/resources/assets/bloodlinesascension/textures/gui/blood_orb_front.png` | 64×64 | **Optional.** Drawn OVER the liquid — glass shine/reflection pixels only, rest transparent. Skip the file entirely if not wanted. |
+| Interior | `.../textures/gui/blood_orb_back.png` | 64×64 | Behind the liquid: dark glass interior. Placeholder committed — overwrite. |
+| Ring | `.../textures/gui/blood_orb_ring.png` | 64×64 | Over the liquid: the gold ring (waves tuck under its inner edge). Placeholder committed — overwrite. |
+| Filigree | `.../textures/gui/blood_orb_deco.png` | 64×64 | Topmost: the red decorations. No placeholder — add when ready. |
+
+(Full path prefix: `src/main/resources/assets/bloodlinesascension/`)
 
 Liquid geometry wired in code (`BloodOrbHudLayer`): center (27, 37), radius 20 on the
 64×64 canvas. If the ring's inner circle differs, say so — three constants to change.
