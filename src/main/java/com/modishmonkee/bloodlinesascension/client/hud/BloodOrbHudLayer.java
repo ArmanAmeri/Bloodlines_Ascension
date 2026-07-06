@@ -24,10 +24,11 @@ import org.joml.Matrix4f;
  * The blood orb HUD element (PoE-style life globe, bottom-left), rendered as
  * pixel-art cells from the canonical mod palette.
  *
- * The liquid body is a Balatro-style domain-warped swirl: each cell samples the
- * noise field through coordinates that are continuously bent by the field
- * itself plus slow sine warps, so the dark/bright patches squish and morph
- * around each other. The cells stay chunky (pixelation), the motion is smooth.
+ * The liquid body reads as circulating blood: horizontally-stretched current
+ * streaks drift sideways through the orb, deeper liquid flowing faster than
+ * the surface (shear), the streaks gently undulating as they go. The surface
+ * is the wave sim plus an irregular noise-driven swell. Cells stay chunky
+ * (pixelation), the motion is smooth.
  *
  * Draw order (back to front):
  *   1. back plate  — placeholder dark pixel disc  → replaced by orb_back.png
@@ -57,21 +58,26 @@ public class BloodOrbHudLayer implements LayeredDraw.Layer {
     /** Thickness of the bright surface row, in GUI px. */
     private static final float MENISCUS_PX = 1.0f;
 
-    // ── Swirl pattern tuning (Balatro-style domain warp) ─────────────────────
-    /** Noise-lattice units per GUI px — smaller = bigger, lazier blobs. */
-    private static final float PATTERN_SCALE = 0.16f;
-    /** How hard the pattern bends itself. More = soupier marbling. */
-    private static final float WARP_AMP = 2.4f;
-    /** Overall swirl animation speed (per tick). */
-    private static final float SWIRL_SPEED = 0.045f;
+    // ── Flow pattern tuning: horizontal blood currents drifting through the orb ─
+    /** Streak length: smaller = longer, lazier horizontal streaks. */
+    private static final float PATTERN_SCALE_X = 0.09f;
+    /** Streak thickness: larger = thinner streaks (stretch ratio vs X). */
+    private static final float PATTERN_SCALE_Y = 0.30f;
+    /** Base sideways drift per tick. */
+    private static final float FLOW_SPEED = 0.05f;
+    /** Deeper liquid flows this much faster than the surface (shear = stirred look). */
+    private static final float FLOW_SHEAR = 0.8f;
+    /** Vertical wobble of the streaks as they drift. */
+    private static final float UNDULATION = 0.45f;
     /** Posterize thresholds: below t0 = blood_black, below t1 = blood_dark, else blood_bright. */
-    private static final float THRESHOLD_BLACK = 0.40f;
-    private static final float THRESHOLD_DARK = 0.80f;
+    private static final float THRESHOLD_BLACK = 0.34f;
+    private static final float THRESHOLD_DARK = 0.82f;
 
-    // ── Idle surface waves (on top of the physics sim) ───────────────────────
-    private static final float IDLE_WAVE_1 = 1.1f;
-    private static final float IDLE_WAVE_2 = 0.65f;
-    private static final float IDLE_WAVE_3 = 0.35f;
+    // ── Idle surface swell (noise-driven — irregular, not sine-rigid) ────────
+    /** Long slow swell height, GUI px. */
+    private static final float SWELL_MAIN = 4.2f;
+    /** Faster small ripple height, GUI px. */
+    private static final float SWELL_RIPPLE = 1.3f;
 
     // Direct canonical palette, dark → bright
     private static final float[] SHADE_BLACK = ModColors.rgb(ModColors.BLOOD_BLACK);
@@ -154,7 +160,6 @@ public class BloodOrbHudLayer implements LayeredDraw.Layer {
         float cellSize = 1f / SUB;
         int subRadius = r * SUB;
         float waveWindow = Mth.clamp(4f * fill * (1f - fill) + 0.15f, 0f, 1f);
-        float swirlT = time * SWIRL_SPEED;
 
         for (int sx = -subRadius; sx < subRadius; sx++) {
             float gx = (sx + 0.5f) * cellSize; // column center, GUI px from orb center
@@ -162,12 +167,14 @@ public class BloodOrbHudLayer implements LayeredDraw.Layer {
             if (chord <= cellSize) continue;
             float top = cy - chord;
             float bottom = cy + chord;
+            float colX = gx + r; // 0..2r across the orb
 
-            int simColumn = Mth.clamp((int) ((gx + r) / (2f * r) * BloodWaveSim.COLUMNS), 0, BloodWaveSim.COLUMNS - 1);
+            int simColumn = Mth.clamp((int) (colX / (2f * r) * BloodWaveSim.COLUMNS), 0, BloodWaveSim.COLUMNS - 1);
             float wave = sim.sampleHeight(simColumn, partialTick);
-            wave += Mth.sin(time * 0.13f + (gx + r) * 0.35f) * IDLE_WAVE_1
-                    + Mth.sin(time * 0.071f - (gx + r) * 0.18f) * IDLE_WAVE_2
-                    + Mth.sin(time * 0.19f + (gx + r) * 0.6f) * IDLE_WAVE_3;
+            // Noise-driven swell: irregular travelling humps, not metronome sines
+            float swell = (LiquidNoiseField.sampleSmooth(colX * 0.16f - time * 0.05f, time * 0.012f) - 0.5f) * SWELL_MAIN;
+            float ripple = (LiquidNoiseField.sampleSmooth(colX * 0.45f + time * 0.09f, 7.3f + time * 0.02f) - 0.5f) * SWELL_RIPPLE;
+            wave += swell + ripple;
             wave *= waveWindow;
 
             // Snap the surface to the cell grid so it moves in visible steps
@@ -182,17 +189,14 @@ public class BloodOrbHudLayer implements LayeredDraw.Layer {
             cell(buf, matrix, x, surface, cellSize, meniscusEnd - surface,
                     SHADE_BRIGHT[0], SHADE_BRIGHT[1], SHADE_BRIGHT[2], LIQUID_ALPHA);
 
-            // Body: domain-warped swirl, cell by cell
+            // Body: horizontal current streaks, faster the deeper you go (shear)
+            float liquidDepth = Math.max(1f, bottom - meniscusEnd);
             for (float y = meniscusEnd; y < bottom; y += cellSize) {
-                float px = (gx + r) * PATTERN_SCALE;
-                float py = (y - cy + r) * PATTERN_SCALE;
-
-                // First pass bends the coordinates, second pass reads the color —
-                // this self-warping is what makes the blobs squish instead of slide
-                float bend = LiquidNoiseField.sampleSmooth(px * 0.7f + swirlT, py * 0.7f - swirlT * 0.6f);
-                float wx = px + (bend - 0.5f) * WARP_AMP + Mth.sin(swirlT * 1.3f + py * 1.1f) * 0.5f;
-                float wy = py + (bend - 0.5f) * WARP_AMP - Mth.cos(swirlT * 0.9f + px * 0.9f) * 0.5f;
-                float n = LiquidNoiseField.sampleSmooth(wx, wy + swirlT * 0.4f);
+                float depthNorm = (y - meniscusEnd) / liquidDepth; // 0 surface .. 1 bottom
+                float px = colX * PATTERN_SCALE_X - time * FLOW_SPEED * (1f + depthNorm * FLOW_SHEAR);
+                float py = (y - cy + r) * PATTERN_SCALE_Y
+                        + Mth.sin(time * 0.08f + colX * 0.25f) * UNDULATION;
+                float n = LiquidNoiseField.sampleSmooth(px, py);
 
                 float[] shade = n < THRESHOLD_BLACK ? SHADE_BLACK : (n < THRESHOLD_DARK ? SHADE_DARK : SHADE_BRIGHT);
                 float h = Math.min(cellSize, bottom - y);
