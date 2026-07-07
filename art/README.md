@@ -34,4 +34,4 @@ Liquid geometry wired in code (`BloodOrbHudLayer`): center (27, 37), radius 20 o
 | File | Path | Size | Wired in |
 |---|---|---|---|
 | Skill slot frame | `.../textures/gui/skill_slot.png` | TBD (~24×24) | M2 skill hotbar |
-| Character screen panel | `.../textures/gui/character/background.png` | ≤320×240 | M6 (skeleton maybe earlier) |
+| Character screen panel | `.../textures/gui/character/background.png` | 80×60 canvas, rendered at 3× (240×180 GUI px) | M6 (skeleton maybe earlier). Integer upscale = crisp; draw all screen elements in the same 80×60 coordinate space. |
