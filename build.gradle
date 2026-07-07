@@ -53,6 +53,12 @@ neoForge {
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
 
+        // Debug run that jumps straight into the dev world (for automated testing)
+        clientQuickplay {
+            client()
+            programArguments.addAll '--quickPlaySingleplayer', 'New World'
+        }
+
         // Second client for testing multiplayer sync against yourself:
         // run the server, then runClient + runClient2 and join localhost on both.
         client2 {
