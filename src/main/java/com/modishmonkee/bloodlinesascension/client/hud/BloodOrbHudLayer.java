@@ -74,21 +74,16 @@ public class BloodOrbHudLayer implements LayeredDraw.Layer {
     private static final float ELLIPSE_DEPTH = 3.0f;
     /** The back edge of the surface ellipse follows the waves this much (front = 1.0). */
     private static final float BACK_EDGE_CALM = 0.75f;
-    /** Dark wave-line under the surface. */
-    private static final int WAVE_BANDS = 1;
-    /** GUI px between the surface and each successive band. */
-    private static final float BAND_GAP = 4.0f;
-    /** How much calmer each successive band is vs the surface (0..1). */
-    private static final float BAND_CALM = 0.30f;
     /** Bright glints drifting through the upper liquid. */
     private static final float GLINT_THRESHOLD = 0.80f;
     private static final float GLINT_SPEED = 0.11f;
 
     // ── Idle surface swell (noise-driven — irregular, not sine-rigid) ────────
+    // Kept subtle so the actual fill level stays readable at a glance
     /** Long slow swell height, GUI px. */
-    private static final float SWELL_MAIN = 4.2f;
+    private static final float SWELL_MAIN = 1.5f;
     /** Faster small ripple height, GUI px. */
-    private static final float SWELL_RIPPLE = 1.9f;
+    private static final float SWELL_RIPPLE = 0.8f;
 
     // Direct canonical palette, dark → bright
     private static final float[] SHADE_BLACK = ModColors.rgb(ModColors.BLOOD_BLACK);
@@ -269,16 +264,6 @@ public class BloodOrbHudLayer implements LayeredDraw.Layer {
             cell(buf, matrix, x, surface, cellSize, meniscusEnd - surface,
                     SHADE_BRIGHT[0], SHADE_BRIGHT[1], SHADE_BRIGHT[2], LIQUID_ALPHA);
             if (meniscusEnd >= bottom) continue;
-
-            // Dark wave-line riding below the surface, calmer than the surface
-            for (int k = 1; k <= WAVE_BANDS; k++) {
-                float bandY = fillY + wave * (1f - k * BAND_CALM) + k * BAND_GAP;
-                bandY = Math.round(bandY * SUB) / (float) SUB;
-                if (bandY > meniscusEnd + 0.5f && bandY < lowerLimbStart - 1f) {
-                    cell(buf, matrix, x, bandY, cellSize, 1f,
-                            SHADE_BLACK[0], SHADE_BLACK[1], SHADE_BLACK[2], LIQUID_ALPHA);
-                }
-            }
 
             // Rare bright glints drifting through the upper liquid
             for (int j = 0; j < 3; j++) {

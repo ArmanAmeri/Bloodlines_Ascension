@@ -41,7 +41,7 @@ public final class ClientBloodState {
         float changed = blood - before;
         if (changed != 0) {
             // Losing blood sloshes harder than gaining it (drain = violence)
-            float strength = Math.min(Math.abs(changed) * (changed < 0 ? 1.6f : 0.9f), 4.5f);
+            float strength = Math.min(Math.abs(changed) * (changed < 0 ? 1.2f : 0.7f), 3.0f);
             WAVES.splash(strength);
         }
     }

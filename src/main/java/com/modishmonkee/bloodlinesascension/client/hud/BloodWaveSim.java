@@ -30,8 +30,9 @@ public final class BloodWaveSim {
     private static final float SPREAD = 0.22f;
     private static final float DAMPING = 0.952f;
     private static final int SPREAD_PASSES = 2;
-    /** Waves can't exceed this many GUI pixels from the fill line. */
-    private static final float MAX_AMPLITUDE = 8.0f;
+    /** Waves can't exceed this many GUI pixels from the fill line — kept low so
+     * the fill level stays readable. */
+    private static final float MAX_AMPLITUDE = 4.0f;
 
     private final float[] height = new float[COLUMNS];
     private final float[] prevHeight = new float[COLUMNS];
