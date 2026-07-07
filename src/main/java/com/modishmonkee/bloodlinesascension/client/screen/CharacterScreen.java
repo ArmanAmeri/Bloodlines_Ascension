@@ -4,6 +4,7 @@ import com.modishmonkee.bloodlinesascension.BloodlinesAscension;
 import com.modishmonkee.bloodlinesascension.util.ModColors;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.api.distmarker.Dist;
@@ -43,6 +44,11 @@ public class CharacterScreen extends Screen {
     private static final int PANEL_W = ART_W * SCALE;
     private static final int PANEL_H = ART_H * SCALE;
 
+    // Regions measured from the art (canvas px). Model slot ≈ vanilla paper-doll box.
+    private static final int CREST_X0 = 112, CREST_Y0 = 44, CREST_X1 = 137, CREST_Y1 = 69;
+    private static final int MODEL_X0 = 100, MODEL_Y0 = 103, MODEL_X1 = 149, MODEL_Y1 = 171;
+    private static final int MODEL_SCALE = 30;
+
     private int panelX, panelY;
     private Boolean artPresent;
 
@@ -66,17 +72,33 @@ public class CharacterScreen extends Screen {
 
         if (Boolean.TRUE.equals(artPresent)) {
             // TODO(M6): pick gold vs silver from the player's rank category; overlay bar fill,
-            //           crest hover, and stat text once the synced attachment exists.
+            //           milestone marks, and stat text once the synced attachment exists.
             layer(g, BACKGROUND);
             layer(g, FRAME);
-            layer(g, CREST);
+            layer(g, hovering(mouseX, mouseY, CREST_X0, CREST_Y0, CREST_X1, CREST_Y1) ? CREST_HOVER : CREST);
             layer(g, ESSENCE_SILVER);
+            renderPlayerModel(g, mouseX, mouseY);
             layer(g, SEPARATOR);
         } else {
             drawPlaceholder(g);
         }
 
         super.render(g, mouseX, mouseY, partialTick);
+    }
+
+    /** Live paper-doll of the player, framed in the central slot (like the inventory preview). */
+    private void renderPlayerModel(GuiGraphics g, int mouseX, int mouseY) {
+        if (this.minecraft == null || this.minecraft.player == null) return;
+        InventoryScreen.renderEntityInInventoryFollowsMouse(g,
+                panelX + MODEL_X0 * SCALE, panelY + MODEL_Y0 * SCALE,
+                panelX + MODEL_X1 * SCALE, panelY + MODEL_Y1 * SCALE,
+                MODEL_SCALE, 0.0625F, mouseX, mouseY, this.minecraft.player);
+    }
+
+    /** Mouse-inside test for a canvas-space box (crest hover, etc.). */
+    private boolean hovering(int mouseX, int mouseY, int x0, int y0, int x1, int y1) {
+        return mouseX >= panelX + x0 * SCALE && mouseX <= panelX + x1 * SCALE
+                && mouseY >= panelY + y0 * SCALE && mouseY <= panelY + y1 * SCALE;
     }
 
     /** Blit a full-canvas layer at the panel origin, scaled by SCALE. */
