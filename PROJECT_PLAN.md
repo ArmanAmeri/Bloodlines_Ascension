@@ -114,13 +114,21 @@ is worth the dependency cost.
        under Iris those bindings are still invalid, so **no light renders** (verified on-screen). This
        is the deferred-vs-forward gap above; a shader edit can't fix it — it needs the compat mod (or
        Veil) to bind the G-buffer samplers into the Iris pipeline for the light pass.
+  - **CRITICAL — "shaders off" is NOT a workaround while Iris is installed (verified 2026-07-07).**
+    Tested Iris + compat both installed with `enableShaders=false`: the light still doesn't render and
+    the `GL_INVALID_OPERATION` flood still fires — the first error lands 11 ms after the light spawns,
+    with *zero* errors before it (so it's the light, not boot noise). Iris breaks Veil's deferred light
+    binding even in its shaders-disabled pipeline mode; and the compat mod's shader-merge path only
+    engages when a shaderpack is *active*, so it doesn't help here either. **The only configuration
+    where Veil point lights render is with the Iris jar removed entirely.** Toggling shaders off
+    in-game is not enough.
   - **Verdict / recording:** iris-veil-compat does *not* currently make Veil **deferred point lights**
-    work under a shaderpack. Options: (a) file an upstream issue with both findings (compat mod is
-    active, last release June 2026) — layer 1 is a clean PR, layer 2 is the substantive ask; (b) film
-    Veil-light scenes with shaders off (always works — bare Veil renders lights fine); (c) for glow
-    that must coexist with shaders, use a *forward* technique (emissive geometry / Quasar particles)
-    instead of deferred point lights. Compat mod kept in `run/mods` — harmless, and needed the moment
-    layer 2 gets fixed.
+    work — not with shaders on, and not with shaders off while Iris is installed. Options: (a) file an
+    upstream issue with both findings (compat mod is active, last release June 2026) — layer 1 is a
+    clean PR, layer 2 is the substantive ask; (b) film Veil-light scenes with the **Iris jar removed**
+    (bare Veil + Sodium renders lights fine, 0 errors); (c) for glow that must coexist with Iris, use a
+    *forward* technique (emissive geometry / Quasar particles) instead of deferred point lights. Compat
+    mod kept in `run/mods` — harmless, and needed the moment layer 2 gets fixed.
 - Pin the Veil version; upgrade deliberately, never mid-milestone.
 
 ## 4. UI approach (ranks + stats/skills menu)
