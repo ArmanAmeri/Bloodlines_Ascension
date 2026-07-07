@@ -25,4 +25,20 @@ public class ModKeyBindings {
             InputConstants.Type.KEYSYM,
             GLFW.GLFW_KEY_KP_SUBTRACT,
             "key.categories.bloodlinesascension");
+
+    /** DEV ONLY: spawn a Veil point light at the player (numpad *). */
+    public static final KeyMapping DEV_SPAWN_LIGHT = new KeyMapping(
+            "key.bloodlinesascension.dev_spawn_light",
+            KeyConflictContext.IN_GAME,
+            InputConstants.Type.KEYSYM,
+            GLFW.GLFW_KEY_KP_MULTIPLY,
+            "key.categories.bloodlinesascension");
+
+    /** DEV ONLY: remove all spawned dev lights (numpad /). */
+    public static final KeyMapping DEV_CLEAR_LIGHTS = new KeyMapping(
+            "key.bloodlinesascension.dev_clear_lights",
+            KeyConflictContext.IN_GAME,
+            InputConstants.Type.KEYSYM,
+            GLFW.GLFW_KEY_KP_DIVIDE,
+            "key.categories.bloodlinesascension");
 }

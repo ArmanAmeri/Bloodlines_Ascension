@@ -18,5 +18,7 @@ public class ModLanguageProvider extends LanguageProvider {
         add("key.categories.bloodlinesascension", "Bloodlines: Ascension");
         add("key.bloodlinesascension.dev_blood_fill", "DEV: Fill Blood Orb");
         add("key.bloodlinesascension.dev_blood_drain", "DEV: Drain Blood Orb");
+        add("key.bloodlinesascension.dev_spawn_light", "DEV: Spawn Veil Light");
+        add("key.bloodlinesascension.dev_clear_lights", "DEV: Clear Veil Lights");
     }
 }

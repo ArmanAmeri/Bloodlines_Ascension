@@ -5,8 +5,11 @@ import com.modishmonkee.bloodlinesascension.client.ClientBloodState;
 import com.modishmonkee.bloodlinesascension.client.ModKeyBindings;
 import com.modishmonkee.bloodlinesascension.client.hud.BloodOrbHudLayer;
 import foundry.veil.api.client.render.VeilRenderSystem;
+import foundry.veil.api.client.render.light.data.PointLightData;
+import foundry.veil.api.client.render.light.renderer.LightRenderHandle;
 import foundry.veil.api.client.render.post.PostProcessingManager;
 import net.minecraft.client.Minecraft;
+import net.minecraft.world.phys.Vec3;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.neoforged.api.distmarker.Dist;
@@ -27,6 +30,9 @@ public class ModClientEvents {
     private static float lastYaw = Float.NaN;
     private static float lastPitch;
 
+    /** DEV: handles for test lights so they can be removed/cleaned up. */
+    private static final java.util.List<LightRenderHandle<PointLightData>> DEV_LIGHTS = new java.util.ArrayList<>();
+
     // Feel tuning — deliberately subtle so the fill level stays readable
     private static final float TILT_PER_YAW_DEGREE = 0.008f;
     private static final float HEAVE_PER_PITCH_DEGREE = 0.004f;
@@ -35,6 +41,8 @@ public class ModClientEvents {
     public static void onRegisterKeyMappings(RegisterKeyMappingsEvent event) {
         event.register(ModKeyBindings.DEV_BLOOD_FILL);
         event.register(ModKeyBindings.DEV_BLOOD_DRAIN);
+        event.register(ModKeyBindings.DEV_SPAWN_LIGHT);
+        event.register(ModKeyBindings.DEV_CLEAR_LIGHTS);
     }
 
     @SubscribeEvent
@@ -52,6 +60,25 @@ public class ModClientEvents {
         // DEV placeholder input until real blood mechanics exist (M1)
         if (ModKeyBindings.DEV_BLOOD_FILL.isDown()) ClientBloodState.addBlood(0.8f);
         if (ModKeyBindings.DEV_BLOOD_DRAIN.isDown()) ClientBloodState.addBlood(-0.8f);
+
+        // DEV: Veil dynamic light test — spawn a blood-red light at the player.
+        // Gotcha this exists to demonstrate: default radius is 1.0 (invisible);
+        // a visible light needs a real radius + brightness.
+        while (ModKeyBindings.DEV_SPAWN_LIGHT.consumeClick()) {
+            Vec3 eye = mc.player.getEyePosition();
+            PointLightData light = new PointLightData();
+            light.setPosition(eye.x, eye.y, eye.z)
+                    .setColor(0.784f, 0.125f, 0.173f) // blood_bright
+                    .setBrightness(2.0f)
+                    .setRadius(15.0f);
+            DEV_LIGHTS.add(VeilRenderSystem.renderer().getLightRenderer().addLight(light));
+            LOGGER.info("Dev light spawned at {} ({} active)", eye, DEV_LIGHTS.size());
+        }
+        while (ModKeyBindings.DEV_CLEAR_LIGHTS.consumeClick()) {
+            DEV_LIGHTS.forEach(LightRenderHandle::free);
+            LOGGER.info("Cleared {} dev lights", DEV_LIGHTS.size());
+            DEV_LIGHTS.clear();
+        }
 
         applyMotionInertia(mc);
         ClientBloodState.WAVES.tick();
@@ -101,5 +128,7 @@ public class ModClientEvents {
     public static void onClientDisconnect(ClientPlayerNetworkEvent.LoggingOut event) {
         ClientBloodState.reset();
         lastYaw = Float.NaN;
+        DEV_LIGHTS.forEach(LightRenderHandle::free);
+        DEV_LIGHTS.clear();
     }
 }
