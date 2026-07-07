@@ -93,6 +93,10 @@ dependencies {
 
     // Veil — shaders, post-processing, particle systems, dynamic lights (the VFX layer)
     implementation "foundry.veil:veil-neoforge-1.21.1:${veil_version}"
+
+    // ImGui-MC — dev-only: unlocks Veil's in-game editor (Toggle Editor keybind).
+    // Players don't need it, so it's runtime-only in the dev environment.
+    localRuntime "foundry.imguimc:imguimc-neoforge-1.21.1:${imguimc_version}"
 }
 
 var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
