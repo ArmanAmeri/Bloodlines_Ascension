@@ -28,8 +28,8 @@ import org.joml.Matrix4f;
  * dark limb shading where the liquid meets the glass silhouette, and the
  * liquid's top plane drawn as a tilted ellipse whose front edge (bright
  * meniscus) rides the waves fully while the back edge lags, so the disc
- * tumbles as it sloshes. Solid opaque body, one lagging wave-line, sparse
- * drifting glints. Surface motion = wave sim + irregular noise swell.
+ * tumbles as it sloshes. Solid opaque body below — no lines, no glints.
+ * Surface motion = wave sim + irregular noise swell, kept subtle.
  *
  * Draw order (back to front):
  *   1. back plate  — placeholder dark pixel disc  → replaced by orb_back.png
@@ -74,9 +74,6 @@ public class BloodOrbHudLayer implements LayeredDraw.Layer {
     private static final float ELLIPSE_DEPTH = 3.0f;
     /** The back edge of the surface ellipse follows the waves this much (front = 1.0). */
     private static final float BACK_EDGE_CALM = 0.75f;
-    /** Bright glints drifting through the upper liquid. */
-    private static final float GLINT_THRESHOLD = 0.80f;
-    private static final float GLINT_SPEED = 0.11f;
 
     // ── Idle surface swell (noise-driven — irregular, not sine-rigid) ────────
     // Kept subtle so the actual fill level stays readable at a glance
@@ -263,19 +260,6 @@ public class BloodOrbHudLayer implements LayeredDraw.Layer {
             // Meniscus: bright front edge of the surface
             cell(buf, matrix, x, surface, cellSize, meniscusEnd - surface,
                     SHADE_BRIGHT[0], SHADE_BRIGHT[1], SHADE_BRIGHT[2], LIQUID_ALPHA);
-            if (meniscusEnd >= bottom) continue;
-
-            // Rare bright glints drifting through the upper liquid
-            for (int j = 0; j < 3; j++) {
-                float gy = surface + 3f + j * 4f;
-                if (gy >= lowerLimbStart - 1.5f) break;
-                float g = LiquidNoiseField.sampleSmooth(colX * 0.35f - time * GLINT_SPEED, gy * 0.3f + j * 5.1f);
-                if (g > GLINT_THRESHOLD) {
-                    float snapped = Math.round(gy * SUB) / (float) SUB;
-                    cell(buf, matrix, x, snapped, cellSize, cellSize,
-                            SHADE_BRIGHT[0], SHADE_BRIGHT[1], SHADE_BRIGHT[2], 0.85f);
-                }
-            }
         }
     }
 
