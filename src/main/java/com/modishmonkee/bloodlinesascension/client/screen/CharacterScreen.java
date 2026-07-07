@@ -36,6 +36,7 @@ public class CharacterScreen extends Screen {
     private static final ResourceLocation CREST_HOVER = tex("crest_hover");
     private static final ResourceLocation ESSENCE_SILVER = tex("essencebar_silver");
     private static final ResourceLocation ESSENCE_GOLD = tex("essencebar_gold");
+    private static final ResourceLocation SEPARATOR = tex("separator");
 
     /** Shared Aseprite canvas; integer scale keeps the pixel art crisp. */
     private static final int ART_W = 250, ART_H = 250, SCALE = 1;
@@ -70,6 +71,7 @@ public class CharacterScreen extends Screen {
             layer(g, FRAME);
             layer(g, CREST);
             layer(g, ESSENCE_SILVER);
+            layer(g, SEPARATOR);
         } else {
             drawPlaceholder(g);
         }
