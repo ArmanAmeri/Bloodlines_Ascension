@@ -82,15 +82,24 @@ is worth the dependency cost.
   extra time for the *first* Veil effect, it gets cheap after that.
 - Compat: Veil couples to specific Sodium versions; test on the actual recording setup
   (Iris/Sodium/shader packs — Q8) *early*, not at video-crunch time.
-- **CONFIRMED (2026-07-07): Iris breaks Veil dynamic lights.** With Iris 1.8.14-beta.1 in
-  `run/mods` — even with shaders *disabled* (`enableShaders=false`) — spawning any Veil point
-  light floods `GL_INVALID_OPERATION ... program texture usage` every frame and the light never
-  renders (Veil's light pass samples the ALBEDO/NORMAL dynamic G-buffers, whose shader patching
-  Iris's pipeline replacement defeats). Removing the Iris jar fixes it completely: zero GL errors,
-  light renders. Sodium 0.8.12-beta.2 alone is fine. Iris jar parked at
-  `run/iris-neoforge-1.8.14-beta.1+mc1.21.1.jar.disabled` — move it back into `run/mods` to
-  re-test. **Open decision for recording:** film Veil-light content without Iris, or check newer
-  Iris/Veil builds for a fix before video crunch.
+- **Iris ↔ Veil dynamic lights (investigated 2026-07-07):**
+  - *Baseline bug:* with Iris 1.8.14-beta.1 in `run/mods` — even with shaders *disabled* — spawning
+    any Veil point light floods `GL_INVALID_OPERATION ... program texture usage` every frame and the
+    light never renders. Iris's pipeline replacement defeats Veil's on-the-fly patching of the
+    ALBEDO/NORMAL dynamic G-buffer samplers. Sodium 0.8.12-beta.2 alone is fine.
+  - *Fix attempt — [iris-veil-compat](https://github.com/leon-o/iris-veil-compat) 0.3.0-beta*
+    (`run/mods/irisveil-0.3.0.jar`, from the GitHub release; CurseForge is Cloudflare-walled).
+    Its job: merge Veil shader code into the shaderpack's gbuffer programs via runtime AST patching.
+    **Result: half-fixes it.** The `GL_INVALID_OPERATION` flood is *gone* (0 errors) — the pipeline
+    bypass is genuinely bridged. **But** with Complementary Reimagined r5.7.1 + shaders on, the merged
+    point-light shader fails to compile every frame: `gbuffers_veil_veil_light_point.vsh: 0(419):
+    error C7011: implicit cast from "vec4" to "vec3"` (NVIDIA strict-GLSL). So the point light still
+    doesn't draw *through this shaderpack*. Veil's own `point.vsh` source is clean — the bad cast is
+    in the compat mod's merge with Complementary's gbuffer code.
+  - **Still open (recording):** (a) try other shaderpacks — the C7011 may be Complementary-specific;
+    (b) file the bug upstream at leon-o/iris-veil-compat (active, last release June 2026); (c) fall
+    back to filming Veil-light scenes with shaders off. Compat mod kept in `run/mods` regardless — it
+    removes the crippling flood, which is strictly better than bare Iris.
 - Pin the Veil version; upgrade deliberately, never mid-milestone.
 
 ## 4. UI approach (ranks + stats/skills menu)
