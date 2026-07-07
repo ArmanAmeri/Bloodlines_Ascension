@@ -90,16 +90,37 @@ is worth the dependency cost.
   - *Fix attempt — [iris-veil-compat](https://github.com/leon-o/iris-veil-compat) 0.3.0-beta*
     (`run/mods/irisveil-0.3.0.jar`, from the GitHub release; CurseForge is Cloudflare-walled).
     Its job: merge Veil shader code into the shaderpack's gbuffer programs via runtime AST patching.
-    **Result: half-fixes it.** The `GL_INVALID_OPERATION` flood is *gone* (0 errors) — the pipeline
-    bypass is genuinely bridged. **But** with Complementary Reimagined r5.7.1 + shaders on, the merged
-    point-light shader fails to compile every frame: `gbuffers_veil_veil_light_point.vsh: 0(419):
-    error C7011: implicit cast from "vec4" to "vec3"` (NVIDIA strict-GLSL). So the point light still
-    doesn't draw *through this shaderpack*. Veil's own `point.vsh` source is clean — the bad cast is
-    in the compat mod's merge with Complementary's gbuffer code.
-  - **Still open (recording):** (a) try other shaderpacks — the C7011 may be Complementary-specific;
-    (b) file the bug upstream at leon-o/iris-veil-compat (active, last release June 2026); (c) fall
-    back to filming Veil-light scenes with shaders off. Compat mod kept in `run/mods` regardless — it
-    removes the crippling flood, which is strictly better than bare Iris.
+    It's built for Veil's *forward-rendered* visuals (Aeronautics wings/glass/contrails) — geometry
+    drawn **into** the gbuffers — not Veil's *deferred light pass*, which reads the gbuffers back.
+  - *Two layers of failure found (each behind the previous):*
+    1. **Vertex compile error (fixed).** The merged shader failed to compile every frame:
+       `gbuffers_veil_veil_light_point.vsh: 0(419): error C7011: implicit cast from "vec4" to "vec3"`
+       (NVIDIA strict-GLSL). Root cause: the compat mod remaps Veil's `layout(location=2) in vec3 Color`
+       attribute onto the shaderpack's `gl_Color` (a **vec4**) **without swizzling**, so Veil's
+       `lightColor = Color;` (with `out vec3 lightColor;`) became `lightColor = gl_Color;` → `vec3 = vec4`.
+       Confirmed from the Iris shader dump (`run/patched_shaders/gbuffers_veil_veil_light_point.vsh`).
+       **This is a genuine iris-veil-compat bug and reproduces with *any* shaderpack** (it's about the
+       attribute remap, not Complementary's code). *One-token fix, verified:* override Veil's `point.vsh`
+       with `lightColor = Color.rgb;` (a no-op for bare Veil where `Color` is already vec3; yields
+       `gl_Color.rgb` under the remap). With that override in place: **C7011 gone, 0 compile failures.**
+       *Not kept in the mod* — it's a verbatim copy of a Veil-internal shader that would silently go
+       stale on Veil upgrades (cf. "pin the Veil version"). Re-add if pursuing this:
+       `src/main/resources/assets/veil/pinwheel/shaders/program/light/point.vsh`, copy Veil 4.3.0's
+       `point.vsh`, change the one line. **Better: upstream the swizzle fix** to iris-veil-compat.
+    2. **Runtime sampler binding (NOT fixed, the real blocker).** With the shader compiling, the light
+       finally *tries* to draw — and the `GL_INVALID_OPERATION ... program texture usage` flood returns
+       at render time (confirmed starting the exact frame the light spawns). The deferred light
+       fragment samples Veil's dynamic `AlbedoSampler`/`NormalSampler`/`DepthSampler` G-buffers, and
+       under Iris those bindings are still invalid, so **no light renders** (verified on-screen). This
+       is the deferred-vs-forward gap above; a shader edit can't fix it — it needs the compat mod (or
+       Veil) to bind the G-buffer samplers into the Iris pipeline for the light pass.
+  - **Verdict / recording:** iris-veil-compat does *not* currently make Veil **deferred point lights**
+    work under a shaderpack. Options: (a) file an upstream issue with both findings (compat mod is
+    active, last release June 2026) — layer 1 is a clean PR, layer 2 is the substantive ask; (b) film
+    Veil-light scenes with shaders off (always works — bare Veil renders lights fine); (c) for glow
+    that must coexist with shaders, use a *forward* technique (emissive geometry / Quasar particles)
+    instead of deferred point lights. Compat mod kept in `run/mods` — harmless, and needed the moment
+    layer 2 gets fixed.
 - Pin the Veil version; upgrade deliberately, never mid-milestone.
 
 ## 4. UI approach (ranks + stats/skills menu)
