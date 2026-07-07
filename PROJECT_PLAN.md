@@ -82,6 +82,15 @@ is worth the dependency cost.
   extra time for the *first* Veil effect, it gets cheap after that.
 - Compat: Veil couples to specific Sodium versions; test on the actual recording setup
   (Iris/Sodium/shader packs — Q8) *early*, not at video-crunch time.
+- **CONFIRMED (2026-07-07): Iris breaks Veil dynamic lights.** With Iris 1.8.14-beta.1 in
+  `run/mods` — even with shaders *disabled* (`enableShaders=false`) — spawning any Veil point
+  light floods `GL_INVALID_OPERATION ... program texture usage` every frame and the light never
+  renders (Veil's light pass samples the ALBEDO/NORMAL dynamic G-buffers, whose shader patching
+  Iris's pipeline replacement defeats). Removing the Iris jar fixes it completely: zero GL errors,
+  light renders. Sodium 0.8.12-beta.2 alone is fine. Iris jar parked at
+  `run/iris-neoforge-1.8.14-beta.1+mc1.21.1.jar.disabled` — move it back into `run/mods` to
+  re-test. **Open decision for recording:** film Veil-light content without Iris, or check newer
+  Iris/Veil builds for a fix before video crunch.
 - Pin the Veil version; upgrade deliberately, never mid-milestone.
 
 ## 4. UI approach (ranks + stats/skills menu)
