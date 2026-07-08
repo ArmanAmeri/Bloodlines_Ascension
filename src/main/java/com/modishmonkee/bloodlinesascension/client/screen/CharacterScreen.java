@@ -51,8 +51,8 @@ public class CharacterScreen extends Screen {
     }
 
     private static final int ART_W = 250, ART_H = 250, SCALE = 1;
-    /** Signed fraction of screen height to shift from centre; negative = downward. */
-    private static final float RAISE = -0.05f;
+    /** Fraction of screen height to lift the panel above centre (positive = up). */
+    private static final float RAISE = 0.10f;
 
     // Regions measured from the art (canvas px).
     private static final int CREST_X0 = 112, CREST_Y0 = 44, CREST_X1 = 137, CREST_Y1 = 69;
@@ -64,8 +64,9 @@ public class CharacterScreen extends Screen {
     private static final int MARKER_W = 3, MARKER_H = 12, MARKER_Y0 = 71;
     /** Placeholder fill until the blood/pureblood resource is wired (M1/M5). */
     private static final float DEMO_FILL = 1.0f;
-    // Button row (bottom-right), 6× self-contained 6×7 sprites at ~9px pitch.
-    private static final int BUTTON_W = 6, BUTTON_H = 7, BUTTON0_X = 166, BUTTON_PITCH = 9, BUTTON_Y = 151;
+    // Button row (bottom-right): 6× 6×7 sprites centred in the 8px-wide slots
+    // (dividers at x165,174,…,219; slot interiors y142–149) measured from the art.
+    private static final int BUTTON_W = 6, BUTTON_H = 7, BUTTON0_X = 167, BUTTON_PITCH = 9, BUTTON_Y = 142;
 
     private final int scale = SCALE;
     private int panelX, panelY;
@@ -85,8 +86,8 @@ public class CharacterScreen extends Screen {
 
     @Override
     public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
-        this.renderBackground(g, mouseX, mouseY, partialTick);
-
+        // No renderBackground() dim: the live world shows through the panel's
+        // transparent areas so the glass model-window reads as actually transparent.
         if (artPresent == null && this.minecraft != null) {
             artPresent = this.minecraft.getResourceManager().getResource(BACKGROUND).isPresent();
         }
