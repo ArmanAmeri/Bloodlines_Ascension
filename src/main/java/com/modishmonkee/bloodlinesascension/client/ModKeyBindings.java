@@ -10,6 +10,25 @@ import org.lwjgl.glfw.GLFW;
 @OnlyIn(Dist.CLIENT)
 public class ModKeyBindings {
 
+    /** Opens/closes the Bloodline character sheet ({@code CharacterScreen}). */
+    public static final KeyMapping OPEN_CHARACTER_SCREEN = new KeyMapping(
+            "key.bloodlinesascension.open_character_screen",
+            KeyConflictContext.IN_GAME,
+            InputConstants.Type.KEYSYM,
+            GLFW.GLFW_KEY_G,
+            "key.categories.bloodlinesascension");
+
+    /**
+     * The skill-hotbar key ({@code <} / comma). Tap: toggle vanilla ↔ skill hotbar.
+     * Hold + scroll: cycle skill sets (see {@code ModClientEvents}).
+     */
+    public static final KeyMapping TOGGLE_SKILL_BAR = new KeyMapping(
+            "key.bloodlinesascension.toggle_skill_bar",
+            KeyConflictContext.IN_GAME,
+            InputConstants.Type.KEYSYM,
+            GLFW.GLFW_KEY_COMMA,
+            "key.categories.bloodlinesascension");
+
     /** DEV ONLY: fill the blood orb while held (numpad +). Removed once real blood mechanics land (M1). */
     public static final KeyMapping DEV_BLOOD_FILL = new KeyMapping(
             "key.bloodlinesascension.dev_blood_fill",

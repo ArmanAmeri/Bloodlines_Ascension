@@ -16,17 +16,21 @@ public class ModLanguageProvider extends LanguageProvider {
 
         // Character screen
         add("gui.bloodlinesascension.character.title", "Character");
-        add("gui.bloodlinesascension.character.button", "Bloodline Character");
         add("gui.bloodlinesascension.character.crest.tooltip", "Bloodline Crest");
-        add("gui.bloodlinesascension.character.button.1.tooltip", "Button 1");
-        add("gui.bloodlinesascension.character.button.2.tooltip", "Button 2");
-        add("gui.bloodlinesascension.character.button.3.tooltip", "Button 3");
-        add("gui.bloodlinesascension.character.button.4.tooltip", "Button 4");
-        add("gui.bloodlinesascension.character.button.5.tooltip", "Button 5");
-        add("gui.bloodlinesascension.character.button.6.tooltip", "Button 6");
+        for (int i = 1; i <= 6; i++) {
+            add("gui.bloodlinesascension.character.button." + i + ".tooltip", "Skill Slot " + i);
+        }
+        for (int i = 1; i <= 9; i++) {
+            add("gui.bloodlinesascension.character.tab." + i + ".tooltip", "Skill Set " + i);
+        }
+
+        // Skill bar
+        add("message.bloodlinesascension.skill_set", "Skill Set %s");
 
         // Keybinds
         add("key.categories.bloodlinesascension", "Bloodlines: Ascension");
+        add("key.bloodlinesascension.open_character_screen", "Open Character Screen");
+        add("key.bloodlinesascension.toggle_skill_bar", "Toggle Skill Bar");
         add("key.bloodlinesascension.dev_blood_fill", "DEV: Fill Blood Orb");
         add("key.bloodlinesascension.dev_blood_drain", "DEV: Drain Blood Orb");
         add("key.bloodlinesascension.dev_spawn_light", "DEV: Spawn Veil Light");

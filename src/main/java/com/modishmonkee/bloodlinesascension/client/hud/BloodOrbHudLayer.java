@@ -82,13 +82,37 @@ public class BloodOrbHudLayer implements LayeredDraw.Layer {
     /** Faster small ripple height, GUI px. */
     private static final float SWELL_RIPPLE = 0.8f;
 
-    // Direct canonical palette, dark → bright
-    private static final float[] SHADE_BLACK = ModColors.rgb(ModColors.BLOOD_BLACK);
-    private static final float[] SHADE_DARK = ModColors.rgb(ModColors.BLOOD_DARK);
-    private static final float[] SHADE_BRIGHT = ModColors.rgb(ModColors.BLOOD_BRIGHT);
-    /** The visible liquid top plane — slightly lighter than the body. */
-    private static final float[] SHADE_PLANE = ModColors.rgb(ModColors.mix(ModColors.BLOOD_DARK, ModColors.BLOOD_BRIGHT, 0.30f));
     private static final float LIQUID_ALPHA = 0.97f;
+
+    // Liquid tint scales with MAX blood (not current — the fill level shows current): a gradual
+    // gradient from a very dark red at DARK_AT (min) to full bright blood red at BRIGHT_AT (the
+    // 1000 max cap). So raising max blood via upgrades smoothly brightens the orb across the range.
+    private static final float BLOOD_DARK_AT = 100f, BLOOD_BRIGHT_AT = 1000f;
+    /** Colour at minimum max-blood — a very dark red (mostly the near-black blood shade). */
+    private static final int BLOOD_DARKEST = ModColors.mix(ModColors.BLOOD_BLACK, ModColors.BLOOD_DARK, 0.35f);
+
+    // Per-frame liquid shades, derived from the current blood colour (see updateShades).
+    private float[] shadeBlack, shadeDark, shadeBright, shadePlane;
+
+    /** The liquid colour for a max-blood value: very dark red → bright red at BRIGHT_AT, then held. */
+    private static int bloodColor(float maxBlood) {
+        float t = Mth.clamp((maxBlood - BLOOD_DARK_AT) / (BLOOD_BRIGHT_AT - BLOOD_DARK_AT), 0f, 1f);
+        // Ease with a sqrt curve so the brightening is front-loaded — a linear ramp over 100→1000
+        // barely moves at the low end (300 was only ~22%); sqrt puts 300 at ~47% for a clearer change.
+        t = (float) Math.sqrt(t);
+        return ModColors.mix(BLOOD_DARKEST, ModColors.BLOOD_BRIGHT, t);
+    }
+
+    /** Recompute the liquid shades from max blood (body/meniscus/plane/limb). */
+    private void updateShades() {
+        int base = bloodColor(ClientBloodState.getMax());
+        // Top plane/meniscus brighten toward bright blood RED (not white) so they stay in the red
+        // family and read coherently over a dark body — mixing toward white looked washed-out/grey.
+        shadeDark = ModColors.rgb(base);                                              // body
+        shadeBright = ModColors.rgb(ModColors.mix(base, ModColors.BLOOD_BRIGHT, 0.55f)); // bright meniscus
+        shadePlane = ModColors.rgb(ModColors.mix(base, ModColors.BLOOD_BRIGHT, 0.30f));  // top plane
+        shadeBlack = ModColors.rgb(ModColors.mix(base, ModColors.BLOOD_BLACK, 0.70f));   // limb/silhouette
+    }
 
     @Override
     public void render(GuiGraphics guiGraphics, DeltaTracker deltaTracker) {
@@ -103,6 +127,8 @@ public class BloodOrbHudLayer implements LayeredDraw.Layer {
         int cx = canvasX + LIQUID_CENTER_X;
         int cy = canvasY + LIQUID_CENTER_Y;
         float time = (mc.level != null ? mc.level.getGameTime() % 240000L : 0) + partialTick;
+
+        updateShades(); // liquid colour tracks max blood (fill level tracks current)
 
         boolean hasPanel = present(PANEL_TEXTURE, panelPresent, v -> panelPresent = v);
         boolean hasBack = present(BACK_TEXTURE, backPresent, v -> backPresent = v);
@@ -162,7 +188,7 @@ public class BloodOrbHudLayer implements LayeredDraw.Layer {
             for (int x = -r; x < r; x++) {
                 if (x * x + y * y <= r * r) {
                     cell(buf, matrix, cx + x, cy + y, 1, 1,
-                            SHADE_BLACK[0] * 0.6f, SHADE_BLACK[1] * 0.6f, SHADE_BLACK[2] * 0.6f, 0.9f);
+                            shadeBlack[0] * 0.6f, shadeBlack[1] * 0.6f, shadeBlack[2] * 0.6f, 0.9f);
                 }
             }
         }
@@ -213,7 +239,7 @@ public class BloodOrbHudLayer implements LayeredDraw.Layer {
                 // Side columns sit entirely in the silhouette shadow
                 if (meniscusEnd < bottom) {
                     cell(buf, matrix, x, meniscusEnd, cellSize, bottom - meniscusEnd,
-                            SHADE_BLACK[0], SHADE_BLACK[1], SHADE_BLACK[2], LIQUID_ALPHA);
+                            shadeBlack[0], shadeBlack[1], shadeBlack[2], LIQUID_ALPHA);
                 }
             } else {
                 float half = (float) Math.sqrt(limbR * limbR - gx * gx);
@@ -221,17 +247,17 @@ public class BloodOrbHudLayer implements LayeredDraw.Layer {
                 lowerLimbStart = cy + half;
                 if (meniscusEnd < upperLimbEnd) {
                     cell(buf, matrix, x, meniscusEnd, cellSize, Math.min(upperLimbEnd, bottom) - meniscusEnd,
-                            SHADE_BLACK[0], SHADE_BLACK[1], SHADE_BLACK[2], LIQUID_ALPHA);
+                            shadeBlack[0], shadeBlack[1], shadeBlack[2], LIQUID_ALPHA);
                 }
                 float bodyStart = Math.max(meniscusEnd, upperLimbEnd);
                 float bodyEnd = Math.min(bottom, lowerLimbStart);
                 if (bodyEnd > bodyStart) {
                     cell(buf, matrix, x, bodyStart, cellSize, bodyEnd - bodyStart,
-                            SHADE_DARK[0], SHADE_DARK[1], SHADE_DARK[2], LIQUID_ALPHA);
+                            shadeDark[0], shadeDark[1], shadeDark[2], LIQUID_ALPHA);
                 }
                 if (bottom > lowerLimbStart) {
                     cell(buf, matrix, x, lowerLimbStart, cellSize, bottom - lowerLimbStart,
-                            SHADE_BLACK[0], SHADE_BLACK[1], SHADE_BLACK[2], LIQUID_ALPHA);
+                            shadeBlack[0], shadeBlack[1], shadeBlack[2], LIQUID_ALPHA);
                 }
             }
 
@@ -247,19 +273,19 @@ public class BloodOrbHudLayer implements LayeredDraw.Layer {
                 if (planeH > 0.01f) {
                     if (planeH > 1f) {
                         cell(buf, matrix, x, backY, cellSize, 1f,
-                                SHADE_BLACK[0], SHADE_BLACK[1], SHADE_BLACK[2], LIQUID_ALPHA);
+                                shadeBlack[0], shadeBlack[1], shadeBlack[2], LIQUID_ALPHA);
                         cell(buf, matrix, x, backY + 1f, cellSize, planeH - 1f,
-                                SHADE_PLANE[0], SHADE_PLANE[1], SHADE_PLANE[2], LIQUID_ALPHA);
+                                shadePlane[0], shadePlane[1], shadePlane[2], LIQUID_ALPHA);
                     } else {
                         cell(buf, matrix, x, backY, cellSize, planeH,
-                                SHADE_PLANE[0], SHADE_PLANE[1], SHADE_PLANE[2], LIQUID_ALPHA);
+                                shadePlane[0], shadePlane[1], shadePlane[2], LIQUID_ALPHA);
                     }
                 }
             }
 
             // Meniscus: bright front edge of the surface
             cell(buf, matrix, x, surface, cellSize, meniscusEnd - surface,
-                    SHADE_BRIGHT[0], SHADE_BRIGHT[1], SHADE_BRIGHT[2], LIQUID_ALPHA);
+                    shadeBright[0], shadeBright[1], shadeBright[2], LIQUID_ALPHA);
         }
     }
 
