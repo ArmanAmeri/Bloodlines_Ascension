@@ -24,8 +24,14 @@ public final class TooltipBoxRenderer {
     private static final int PAD_Y = 5;
     private static final int MOUSE_OFFSET = 12;
     private static final int LINE_SPACING = 2;
-    /** Text render scale (scaled pose, not a smaller font asset). */
-    private static final float TEXT_SCALE = 0.625f; // was 0.5, +25%
+
+    // Named text scales (scaled pose, not separate font assets) — "medium" is
+    // this mod's default UI text size; refer to these names, not raw numbers.
+    public static final float FONT_SIZE_SMALL = 0.53125f;  // medium − 15%
+    public static final float FONT_SIZE_MEDIUM = 0.625f;   // default
+    public static final float FONT_SIZE_LARGE = 0.71875f;  // medium + 15%
+
+    private static final float TEXT_SCALE = FONT_SIZE_MEDIUM;
 
     private TooltipBoxRenderer() {}
 
