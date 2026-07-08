@@ -3,6 +3,7 @@ package com.modishmonkee.bloodlinesascension.client.screen;
 import com.modishmonkee.bloodlinesascension.BloodlinesAscension;
 import com.modishmonkee.bloodlinesascension.client.gui.TooltipBoxRenderer;
 import com.modishmonkee.bloodlinesascension.util.ModColors;
+import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
@@ -102,7 +103,7 @@ public class CharacterScreen extends Screen {
             layer(g, hovering(mouseX, mouseY, CREST_X0, CREST_Y0, CREST_X1, CREST_Y1) ? CREST_HOVER : CREST);
             layer(g, ESSENCE_SILVER);
             drawEssenceFill(g, DEMO_FILL, MILESTONE_SILVER);
-            layer(g, WINDOW);            // translucent glass in the model slot
+            layerBlended(g, WINDOW);     // translucent glass in the model slot
             renderPlayerModel(g, mouseX, mouseY);
             layer(g, SEPARATOR);
             drawButtons(g);
@@ -198,6 +199,21 @@ public class CharacterScreen extends Screen {
     /** Blit a full-canvas layer at the panel origin, scaled. */
     private void layer(GuiGraphics g, ResourceLocation texture) {
         g.blit(texture, panelX, panelY, ART_W * scale, ART_H * scale, 0f, 0f, ART_W, ART_H, ART_W, ART_H);
+    }
+
+    /**
+     * Same as {@link #layer}, but with blending explicitly enabled — needed for
+     * textures using *partial* alpha (e.g. the tinted glass window). Plain
+     * {@code g.blit} only alpha-tests (fully transparent pixels are discarded);
+     * without blending on, partial-alpha pixels draw fully opaque instead of
+     * translucent. Everything else in this screen is binary alpha (0 or 255)
+     * so doesn't need this — only wrap where partial alpha is actually used.
+     */
+    private void layerBlended(GuiGraphics g, ResourceLocation texture) {
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        layer(g, texture);
+        RenderSystem.disableBlend();
     }
 
     @Override
