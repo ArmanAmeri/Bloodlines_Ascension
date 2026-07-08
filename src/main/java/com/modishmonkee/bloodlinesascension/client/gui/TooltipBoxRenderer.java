@@ -24,6 +24,8 @@ public final class TooltipBoxRenderer {
     private static final int PAD_Y = 5;
     private static final int MOUSE_OFFSET = 12;
     private static final int LINE_SPACING = 2;
+    /** Text renders at half the font's native size (scaled pose, not a smaller font asset). */
+    private static final float TEXT_SCALE = 0.5f;
 
     private TooltipBoxRenderer() {}
 
@@ -36,10 +38,12 @@ public final class TooltipBoxRenderer {
                              int screenWidth, int screenHeight) {
         if (lines.isEmpty()) return;
 
-        int textWidth = 0;
-        for (Component line : lines) textWidth = Math.max(textWidth, font.width(line));
+        int rawTextWidth = 0;
+        for (Component line : lines) rawTextWidth = Math.max(rawTextWidth, font.width(line));
+        int textWidth = Math.round(rawTextWidth * TEXT_SCALE);
+        int lineHeight = Math.round(font.lineHeight * TEXT_SCALE);
         int boxWidth = textWidth + PAD_X * 2;
-        int boxHeight = lines.size() * font.lineHeight + (lines.size() - 1) * LINE_SPACING + PAD_Y * 2;
+        int boxHeight = lines.size() * lineHeight + (lines.size() - 1) * LINE_SPACING + PAD_Y * 2;
 
         int x = mouseX + MOUSE_OFFSET;
         int y = mouseY - MOUSE_OFFSET;
@@ -52,8 +56,12 @@ public final class TooltipBoxRenderer {
 
         int ty = y + PAD_Y;
         for (Component line : lines) {
-            g.drawString(font, line, x + PAD_X, ty, 0xFFFFFFFF, true);
-            ty += font.lineHeight + LINE_SPACING;
+            g.pose().pushPose();
+            g.pose().translate(x + PAD_X, ty, 0);
+            g.pose().scale(TEXT_SCALE, TEXT_SCALE, 1f);
+            g.drawString(font, line, 0, 0, 0xFFFFFFFF, true);
+            g.pose().popPose();
+            ty += lineHeight + LINE_SPACING;
         }
     }
 }

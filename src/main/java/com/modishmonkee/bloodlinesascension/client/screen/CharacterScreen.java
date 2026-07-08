@@ -62,7 +62,7 @@ public class CharacterScreen extends Screen {
     // Regions measured from the art (canvas px).
     private static final int CREST_X0 = 112, CREST_Y0 = 44, CREST_X1 = 137, CREST_Y1 = 69;
     private static final int MODEL_X0 = 100, MODEL_Y0 = 102, MODEL_X1 = 149, MODEL_Y1 = 171;
-    private static final int MODEL_SCALE = 30;
+    private static final int MODEL_SCALE = 26; // vanilla inventory default is 30; nudged down a bit
     // Essence bar: dark-blood channel at y76–77 spanning x30–219; code paints bright
     // blood over it, 3×12 markers (centred on the bar) bracket the red part.
     private static final int BAR_X0 = 30, BAR_X1 = 219, BAR_Y0 = 76, BAR_H = 2;
@@ -98,12 +98,13 @@ public class CharacterScreen extends Screen {
         }
 
         if (Boolean.TRUE.equals(artPresent)) {
+            layerBlended(g, WINDOW);     // translucent glass — bottommost layer; background/frame
+                                         // have a transparent hole here so it still shows through
             layer(g, BACKGROUND);
             layer(g, FRAME);
             layer(g, hovering(mouseX, mouseY, CREST_X0, CREST_Y0, CREST_X1, CREST_Y1) ? CREST_HOVER : CREST);
             layer(g, ESSENCE_SILVER);
             drawEssenceFill(g, DEMO_FILL, MILESTONE_SILVER);
-            layerBlended(g, WINDOW);     // translucent glass in the model slot
             renderPlayerModel(g, mouseX, mouseY);
             layer(g, SEPARATOR);
             drawButtons(g);
