@@ -1,6 +1,13 @@
 {
   "creativetab.bloodlinesascension.bloodlines_tab": "Bloodlines: Ascension",
   "gui.bloodlinesascension.character.button": "Bloodline Character",
+  "gui.bloodlinesascension.character.button.1.tooltip": "Button 1",
+  "gui.bloodlinesascension.character.button.2.tooltip": "Button 2",
+  "gui.bloodlinesascension.character.button.3.tooltip": "Button 3",
+  "gui.bloodlinesascension.character.button.4.tooltip": "Button 4",
+  "gui.bloodlinesascension.character.button.5.tooltip": "Button 5",
+  "gui.bloodlinesascension.character.button.6.tooltip": "Button 6",
+  "gui.bloodlinesascension.character.crest.tooltip": "Bloodline Crest",
   "gui.bloodlinesascension.character.title": "Character",
   "key.bloodlinesascension.dev_blood_drain": "DEV: Drain Blood Orb",
   "key.bloodlinesascension.dev_blood_fill": "DEV: Fill Blood Orb",

@@ -17,6 +17,13 @@ public class ModLanguageProvider extends LanguageProvider {
         // Character screen
         add("gui.bloodlinesascension.character.title", "Character");
         add("gui.bloodlinesascension.character.button", "Bloodline Character");
+        add("gui.bloodlinesascension.character.crest.tooltip", "Bloodline Crest");
+        add("gui.bloodlinesascension.character.button.1.tooltip", "Button 1");
+        add("gui.bloodlinesascension.character.button.2.tooltip", "Button 2");
+        add("gui.bloodlinesascension.character.button.3.tooltip", "Button 3");
+        add("gui.bloodlinesascension.character.button.4.tooltip", "Button 4");
+        add("gui.bloodlinesascension.character.button.5.tooltip", "Button 5");
+        add("gui.bloodlinesascension.character.button.6.tooltip", "Button 6");
 
         // Keybinds
         add("key.categories.bloodlinesascension", "Bloodlines: Ascension");

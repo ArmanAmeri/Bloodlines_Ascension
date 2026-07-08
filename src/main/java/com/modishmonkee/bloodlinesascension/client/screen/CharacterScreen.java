@@ -1,6 +1,7 @@
 package com.modishmonkee.bloodlinesascension.client.screen;
 
 import com.modishmonkee.bloodlinesascension.BloodlinesAscension;
+import com.modishmonkee.bloodlinesascension.client.gui.TooltipBoxRenderer;
 import com.modishmonkee.bloodlinesascension.util.ModColors;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
@@ -19,11 +20,14 @@ import net.neoforged.api.distmarker.OnlyIn;
  * {@code background → frame → crest → essence bar (frame + code fill + markers)
  * → transparent window (glass) → player model → separator → buttons}.
  *
- * Rendered at 1× (integer, crisp), sat ~5% below screen centre. Region constants
- * are measured straight from the exported PNG alpha, so everything lands on the
- * pixel grid. Placeholders remain where data isn't wired: the essence bar shows
- * the silver (Lesser) variant filled to {@link #DEMO_FILL}; button clicks only
- * toggle their pressed art for now — real behaviour and stats come with M6.
+ * Rendered at 1× (integer, crisp), lifted ~10% above screen centre. Region
+ * constants are measured straight from the exported PNG alpha, so everything
+ * lands on the pixel grid. Placeholders remain where data isn't wired: the
+ * essence bar shows the silver (Lesser) variant filled to {@link #DEMO_FILL};
+ * button clicks only toggle their pressed art for now — real behaviour and
+ * stats come with M6. Hovering the crest or a button shows a hand-drawn
+ * tooltip (see {@link TooltipBoxRenderer}) with placeholder text until real
+ * labels exist.
  */
 @OnlyIn(Dist.CLIENT)
 public class CharacterScreen extends Screen {
@@ -107,6 +111,25 @@ public class CharacterScreen extends Screen {
         }
 
         super.render(g, mouseX, mouseY, partialTick);
+        renderHoverTooltip(g, mouseX, mouseY);
+    }
+
+    /** Hand-drawn tooltip (see TooltipBoxRenderer) for whatever's under the cursor. */
+    private void renderHoverTooltip(GuiGraphics g, int mouseX, int mouseY) {
+        if (!Boolean.TRUE.equals(artPresent)) return;
+
+        Component text = null;
+        if (hovering(mouseX, mouseY, CREST_X0, CREST_Y0, CREST_X1, CREST_Y1)) {
+            text = Component.translatable("gui.bloodlinesascension.character.crest.tooltip");
+        } else {
+            int hovered = hoveredButton(mouseX, mouseY);
+            if (hovered >= 0) {
+                text = Component.translatable("gui.bloodlinesascension.character.button." + (hovered + 1) + ".tooltip");
+            }
+        }
+        if (text != null) {
+            TooltipBoxRenderer.draw(g, this.font, text, mouseX, mouseY, this.width, this.height);
+        }
     }
 
     /** Bright-blood fill over the bar's channel, with a milestone marker at each end of the red part. */
@@ -135,16 +158,25 @@ public class CharacterScreen extends Screen {
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (button == 0) {
-            for (int i = 0; i < BUTTON.length; i++) {
-                int bx = sx(BUTTON0_X + i * BUTTON_PITCH), by = sy(BUTTON_Y);
-                if (mouseX >= bx && mouseX < bx + BUTTON_W * scale
-                        && mouseY >= by && mouseY < by + BUTTON_H * scale) {
-                    selectedButton = (selectedButton == i) ? -1 : i; // toggle for now; real actions later
-                    return true;
-                }
+            int hovered = hoveredButton((int) mouseX, (int) mouseY);
+            if (hovered >= 0) {
+                selectedButton = (selectedButton == hovered) ? -1 : hovered; // toggle for now; real actions later
+                return true;
             }
         }
         return super.mouseClicked(mouseX, mouseY, button);
+    }
+
+    /** Index of the button under the cursor, or -1. */
+    private int hoveredButton(int mouseX, int mouseY) {
+        for (int i = 0; i < BUTTON.length; i++) {
+            int bx = sx(BUTTON0_X + i * BUTTON_PITCH), by = sy(BUTTON_Y);
+            if (mouseX >= bx && mouseX < bx + BUTTON_W * scale
+                    && mouseY >= by && mouseY < by + BUTTON_H * scale) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     /** Live paper-doll of the player, framed in the central slot (like the inventory preview). */
