@@ -24,8 +24,8 @@ public final class TooltipBoxRenderer {
     private static final int PAD_Y = 5;
     private static final int MOUSE_OFFSET = 12;
     private static final int LINE_SPACING = 2;
-    /** Text renders at half the font's native size (scaled pose, not a smaller font asset). */
-    private static final float TEXT_SCALE = 0.5f;
+    /** Text render scale (scaled pose, not a smaller font asset). */
+    private static final float TEXT_SCALE = 0.625f; // was 0.5, +25%
 
     private TooltipBoxRenderer() {}
 
