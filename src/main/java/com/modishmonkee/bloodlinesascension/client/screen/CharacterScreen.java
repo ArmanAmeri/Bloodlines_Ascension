@@ -66,7 +66,7 @@ public class CharacterScreen extends Screen {
     private static final float DEMO_FILL = 1.0f;
     // Button row (bottom-right): 6× 6×7 sprites centred in the 8px-wide slots
     // (dividers at x165,174,…,219; slot interiors y142–149) measured from the art.
-    private static final int BUTTON_W = 6, BUTTON_H = 7, BUTTON0_X = 167, BUTTON_PITCH = 9, BUTTON_Y = 142;
+    private static final int BUTTON_W = 6, BUTTON_H = 7, BUTTON0_X = 167, BUTTON_PITCH = 9, BUTTON_Y = 143;
 
     private final int scale = SCALE;
     private int panelX, panelY;
